@@ -157,6 +157,7 @@ GEM
       actionview (>= 5.0.0)
       activesupport (>= 5.0.0)
     jmespath (1.6.2)
+    json (2.19.2)
     launchy (3.0.1)
       addressable (~> 2.8)
       childprocess (~> 5.0)
@@ -201,7 +202,10 @@ GEM
       racc (~> 1.4)
     nokogiri (1.16.7-x86_64-linux)
       racc (~> 1.4)
-    pagy (9.3.4)
+    pagy (43.4.2)
+      json
+      uri
+      yaml
     pg (1.5.9)
     psych (5.2.0)
       stringio
@@ -337,6 +341,7 @@ GEM
     websocket-extensions (0.1.5)
     xpath (3.2.0)
       nokogiri (~> 1.8)
+    yaml (0.4.0)
     zeitwerk (2.7.1)
 
 PLATFORMS
@@ -359,7 +364,7 @@ DEPENDENCIES
   letter_opener
   memory_profiler
   newrelic_rpm (= 9.10.0)
-  pagy (= 9.3.4)
+  pagy (= 43.4.2)
   pg
   puma
   pundit
