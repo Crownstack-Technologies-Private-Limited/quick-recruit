@@ -3,7 +3,7 @@ class CampaignsController < BaseController
 
   def new
     @campaign = Campaign.new
-    @owners = User.recruiters
+    @owners = User.owners
   end
 
   def show

@@ -87,7 +87,7 @@ class CandidatesController < BaseController
   end
 
   def pipeline
-    @recruiters = User.recruiters
+    @recruiters = User.owners
     candidates = nil
     if current_user.admin?
       if params[:recruiter].present?
