@@ -18,7 +18,7 @@ class User < ApplicationRecord
   scope :recruiters, -> { where(role: [:recruiter, :recruiter_admin], active: true).order(:first_name) }
   scope :admins, -> { where(role: :admin, active: true) }
   scope :data, -> { where(role: :data, active: true) }
-  scope :owners, -> { where(role: [:admin, :recruiter, :recruiter_admin], active: true).order(:first_name) }
+  scope :owners, -> { where(role: [:admin, :recruiter, :recruiter_admin, :interviewer], active: true).order(:first_name) }
   scope :interviewers, -> { where(role: [:interviewer, :admin], active: true).order(:first_name) }
 
   def avatar_size

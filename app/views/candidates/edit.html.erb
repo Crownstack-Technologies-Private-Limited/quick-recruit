@@ -2,10 +2,58 @@
   <div class="py-8 px-4 mx-auto max-w-2xl lg:py-8">
     <h2 class="mb-4 text-2xl font-bold text-gray-900 dark:text-white">Edit Candidate</h2>
     <%= tailwind_form_with(model: @candidate, id: dom_id(@candidate)) do |form| %>
+      <% if @existing_candidate %>
+        <div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert">
+          <span class="font-medium">Wait!</span> Candidate with this email already exists: <%= link_to @existing_candidate.name, candidate_timeline_path(@existing_candidate), class: "font-semibold underline hover:text-red-900" %>
+        </div>
+      <% end %>
       <%= render "shared/error_messages", resource: @candidate %>
       <%= render "shared/form_messages", resource: @candidate, message: local_assigns[:message] %>
       <div class="grid gap-4 sm:grid-cols-2 sm:gap-6">
         <div class="sm:col-span-2">
+          <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="resume">Resume</label>
+          
+          <% if @candidate.resume.attached? %>
+            <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-between transition-all hover:border-blue-300">
+              <div class="flex items-center space-x-3">
+                <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                  <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white"><%= @candidate.resume.filename %></p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400"><%= number_to_human_size(@candidate.resume.blob.byte_size) %></p>
+                </div>
+              </div>
+              <%= link_to rails_blob_path(@candidate.resume, disposition: "inline"), class: "flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 bg-white dark:bg-gray-700 px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-600 shadow-sm", target: "_blank" do %>
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                View Current
+              <% end %>
+            </div>
+          <% end %>
+
+          <div class="flex items-center justify-center w-full" 
+               data-controller="file-upload"
+               data-action="dragover->file-upload#dragover dragleave->file-upload#dragleave drop->file-upload#drop">
+            <label for="candidate_resume" class="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600 transition-colors">
+              <div class="flex flex-col items-center justify-center pt-5 pb-6" data-file-upload-target="placeholder">
+                <svg class="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                </svg>
+                <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">Click to upload new</span> or drag and drop</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">PDF (MAX. 5MB)</p>
+              </div>
+              <div class="hidden flex flex-col items-center justify-center pt-5 pb-6" data-file-upload-target="preview">
+                <svg class="w-8 h-8 mb-4 text-green-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <p class="mb-2 text-sm font-medium text-gray-900 dark:text-white" data-file-upload-target="filename"></p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">New file selected</p>
+              </div>
+              <%= form.file_field :resume, accept: 'application/pdf', class: "hidden", data: { file_upload_target: "input", action: "change->file-upload#update" } %>
+            </label>
+          </div>
           <h2 class="mt-8 text-xl font-semibold leading-none text-gray-900 dark:text-white">Personal Information</h2>
         </div>
         <div>
@@ -55,7 +103,7 @@
         </div>
         <div>
           <label for="user-role" class="inline-flex items-center mb-1 text-sm font-medium text-gray-900 dark:text-white">
-            Primary skill
+            Primary skill <span class="text-red-600 ml-1">*</span>
             <button type="button" data-tooltip-target="tooltip-user-skill" data-tooltip-style="dark" class="ml-1">
               <svg aria-hidden="true" class="w-4 h-4 text-gray-400 hover:text-gray-900 dark:hover:text-white dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
               <span class="sr-only">Show information</span>
@@ -87,7 +135,7 @@
       <div class="grid gap-4 md:gap-6 md:grid-cols-2 sm:mb-4">
         <div>
           <label for="user-role" class="inline-flex items-center mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            Candidate Source
+            Candidate Source <span class="text-red-600 ml-1">*</span>
             <button type="button" data-tooltip-target="tooltip-user-role" data-tooltip-style="dark" class="ml-1">
               <svg aria-hidden="true" class="w-4 h-4 text-gray-400 hover:text-gray-900 dark:hover:text-white dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
               <span class="sr-only">Show information</span>
@@ -101,7 +149,7 @@
         </div>
         <div class="sm:col-span-1">
           <label for="user-role" class="inline-flex items-center mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            Associate with Job Opening
+            Associate with Job Opening <span class="text-red-600 ml-1">*</span>
             <button type="button" data-tooltip-target="tooltip-user-opening" data-tooltip-style="dark" class="ml-1">
               <svg aria-hidden="true" class="w-4 h-4 text-gray-400 hover:text-gray-900 dark:hover:text-white dark:text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path></svg>
               <span class="sr-only">Show information</span>
@@ -113,6 +161,7 @@
           </label>
           <%= form.collection_select(:opening_id, @openings, :id, :title, { :prompt => "Select Job Opening to associate" }, :class => "form-text-field", :required => true) %>
         </div>
+
       </div>
       <button type="submit" class="btn-primary">
         Edit Candidate
