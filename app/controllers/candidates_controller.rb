@@ -35,8 +35,20 @@ class CandidatesController < BaseController
   end
 
   def update
-    @candidate.update(candidate_params.except(:note))
-    redirect_to candidate_timeline_path(@candidate), notice: "Candidate was updated successfully"
+    if @candidate.update(candidate_params.except(:note))
+      redirect_to candidate_timeline_path(@candidate), notice: "Candidate was updated successfully"
+    else
+      @roles = Role.all
+      @openings = Opening.all
+      @sources = Source.all
+      
+      if @candidate.errors[:email].include?("has already been taken")
+        @existing_candidate = Candidate.find_by(email: @candidate.email)
+      end
+      
+      flash.now[:alert] = "Failed to update candidate. Please check the errors below."
+      render :edit, status: :unprocessable_entity
+    end
   end
 
   def destroy
@@ -69,7 +81,17 @@ class CandidatesController < BaseController
 
       redirect_to candidate_timeline_path(@candidate), notice: "New candidate was created successfully"
     else
-      redirect_to new_candidate_path, alert: "Failed to add candidate. Please try again."
+      @roles = Role.all
+      @openings = Opening.all
+      @sources = Source.all
+      @buckets = current_user.recruiter? ? Candidate.buckets.except(:pipeline) : Candidate.buckets
+      
+      if @candidate.errors[:email].include?("has already been taken")
+        @existing_candidate = Candidate.find_by(email: @candidate.email)
+      end
+      
+      flash.now[:alert] = "Failed to add candidate. Please check the errors below."
+      render :new, status: :unprocessable_entity
     end
   end
 
