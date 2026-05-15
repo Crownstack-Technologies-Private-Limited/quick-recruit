@@ -2,12 +2,49 @@ class Opening::AiScoresController < Opening::BaseController
   before_action :set_opening
 
   # GET /openings/:opening_id/ai_scores
-  # Lists valid AI scores for the opening, sorted by score desc.
   def index
-    @ai_scores = @opening.ai_scores
-                   .valid_scores
-                   .sorted_by_score
-                   .includes(:candidate)
+    @locations = Candidate
+                   .joins(:ai_scores)
+                   .where(ai_scores: { opening_id: @opening.id, is_valid: true })
+                   .reorder(nil)
+                   .distinct
+                   .pluck(:location)
+                   .map(&:to_s)
+                   .map(&:strip)
+                   .reject(&:blank?)
+                   .map(&:downcase)
+                   .uniq
+                   .sort
+                   .map(&:titleize)
+
+    scope = @opening.ai_scores.valid_scores.sorted_by_score.includes(:candidate)
+
+    if params[:location].present?
+      matching_candidate_ids = Candidate.unscoped
+                                 .where("LOWER(TRIM(location)) = ?", params[:location].strip.downcase)
+                                 .select(:id)
+      scope = scope.where(candidate_id: matching_candidate_ids)
+    end
+
+    @ai_scores = scope.to_a
+
+    if params[:query].present?
+      q = params[:query].strip.downcase
+      @ai_scores = @ai_scores.select do |s|
+        s.candidate.name.downcase.include?(q) ||
+          s.candidate.email.downcase.include?(q)
+      end
+    end
+
+    if params[:min_ctc].present? || params[:max_ctc].present?
+      min_ctc = params[:min_ctc].presence&.to_f
+      max_ctc = params[:max_ctc].presence&.to_f
+      @ai_scores = @ai_scores.select do |s|
+        ctc = s.candidate.expected_ctc.to_s.gsub(/[^0-9.]/, "").to_f
+        (min_ctc.nil? || ctc >= min_ctc) && (max_ctc.nil? || ctc <= max_ctc)
+      end
+    end
+
     @latest_log = @opening.ai_scoring_logs.recent.first
     @cost_estimate_usd = estimate_cost_for_opening
   end
@@ -15,7 +52,7 @@ class Opening::AiScoresController < Opening::BaseController
   # GET /openings/:opening_id/ai_scores/:id
   # Detail view (used by the candidate detail modal).
   def show
-    @ai_score = @opening.ai_scores.find(params[:id])
+    @ai_score = @opening.ai_scores.includes(candidate: :user).find(params[:id])
     @candidate = @ai_score.candidate
   end
 

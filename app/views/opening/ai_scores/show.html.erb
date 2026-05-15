@@ -24,39 +24,38 @@
         <% end %>
 
         <!-- Candidate info card -->
-        <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3"><%= @candidate.name %></h3>
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p class="text-gray-500 dark:text-gray-400">Email</p>
-              <p class="text-gray-900 dark:text-white"><%= @candidate.email %></p>
+        <div class="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+          <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <h3 class="text-base font-semibold text-gray-900 dark:text-white"><%= @candidate.name %></h3>
+              <%= link_to "View Profile", candidate_path(@candidate),
+                    class: "text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium",
+                    target: "_blank" %>
             </div>
-            <div>
-              <p class="text-gray-500 dark:text-gray-400">Phone</p>
-              <p class="text-gray-900 dark:text-white"><%= @candidate.phone.presence || "-" %></p>
-            </div>
-            <div>
-              <p class="text-gray-500 dark:text-gray-400">Current Title</p>
-              <p class="text-gray-900 dark:text-white"><%= @candidate.current_title.presence || "-" %></p>
-            </div>
-            <div>
-              <p class="text-gray-500 dark:text-gray-400">Current Company</p>
-              <p class="text-gray-900 dark:text-white"><%= @candidate.current_company.presence || "-" %></p>
-            </div>
-            <div>
-              <p class="text-gray-500 dark:text-gray-400">Years of Experience</p>
-              <p class="text-gray-900 dark:text-white"><%= @candidate.experience.presence || "-" %></p>
-            </div>
-            <div>
-              <p class="text-gray-500 dark:text-gray-400">Resume</p>
-              <% if @candidate.resume.attached? %>
-                <p class="text-blue-600 dark:text-blue-500 hover:underline">
-                  <%= link_to "Download resume", url_for(@candidate.resume) %>
-                </p>
-              <% else %>
-                <p class="text-gray-900 dark:text-white">-</p>
-              <% end %>
-            </div>
+            <% if @candidate.resume.attached? %>
+              <%= link_to "Download Resume", url_for(@candidate.resume),
+                    class: "text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium" %>
+            <% end %>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-0 divide-x-0 text-sm">
+            <% [
+              ["Email",        @candidate.email],
+              ["Phone",        @candidate.phone.presence || "-"],
+              ["Location",     @candidate.location.presence || "-"],
+              ["Current Title",   display_current_title(@candidate)],
+              ["Current Company", @candidate.current_company.presence || "-"],
+              ["Experience",   @candidate.experience.present? ? "#{@candidate.experience} yrs" : "-"],
+              ["Current CTC",  @candidate.current_ctc.presence || "-"],
+              ["Expected CTC", @candidate.expected_ctc.presence || "-"],
+              ["Notice Period", @candidate.notice_period.presence || "-"],
+              ["Added On",     display_date(@candidate.created_at)],
+              ["Added By",     @candidate.user&.name || "-"],
+            ].each do |label, value| %>
+              <div class="px-5 py-3.5 border-b border-gray-50 dark:border-gray-700">
+                <p class="text-xs text-gray-400 dark:text-gray-500 mb-0.5"><%= label %></p>
+                <p class="font-medium text-gray-800 dark:text-white break-words"><%= value %></p>
+              </div>
+            <% end %>
           </div>
         </div>
 
@@ -64,9 +63,10 @@
         <div class="mb-6 flex items-center gap-4">
           <div class="inline-block">
             <p class="text-gray-500 dark:text-gray-400 text-xs mb-1">Overall Score</p>
-            <span class="inline-block px-4 py-2 rounded-full font-bold text-lg <%= ai_score_badge_classes(@ai_score.score) %>">
-              <%= @ai_score.score %> - <%= ai_score_fit_label(@ai_score.score) %>
+            <span class="inline-flex w-16 h-16 items-center justify-center rounded-full font-bold text-xl <%= ai_score_badge_classes(@ai_score.score) %>">
+              <%= @ai_score.score %>
             </span>
+            <span class="text-base font-medium text-gray-700 dark:text-gray-300"><%= ai_score_fit_label(@ai_score.score) %></span>
           </div>
         </div>
 
