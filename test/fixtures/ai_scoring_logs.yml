@@ -1,0 +1,31 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+web_opening_log:
+  opening: web_opening
+  requested_by: recruiter
+  batch_id: <%= SecureRandom.uuid %>
+  total_candidates: 2
+  successfully_scored: 2
+  failed_count: 0
+  provider: chatgpt
+  model: gpt-4o-mini
+  total_input_tokens: 1950
+  total_output_tokens: 980
+  total_cost: 0.002434
+  status: completed
+  started_at: <%= 3.days.ago %>
+  completed_at: <%= 2.days.ago %>
+
+mobile_opening_log:
+  opening: mobile_opening
+  requested_by: recruiter
+  batch_id: <%= SecureRandom.uuid %>
+  total_candidates: 0
+  successfully_scored: 0
+  failed_count: 0
+  provider: chatgpt
+  model: gpt-4o-mini
+  total_input_tokens: 0
+  total_output_tokens: 0
+  total_cost: 0.0
+  status: pending

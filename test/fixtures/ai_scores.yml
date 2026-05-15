@@ -1,0 +1,33 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+john_web_score:
+  candidate: john_doe
+  opening: web_opening
+  score: 85
+  reasoning: "Candidate has strong Python and JavaScript experience matching the role requirements."
+  matched_skills: {}
+  gaps: {}
+  provider: chatgpt
+  model: gpt-4o-mini
+  input_tokens: 1000
+  output_tokens: 500
+  cost: 0.001234
+  is_valid: true
+  processed_at: <%= 2.days.ago %>
+  expires_at: <%= 88.days.from_now %>
+
+jane_web_score:
+  candidate: jane_smith
+  opening: web_opening
+  score: 72
+  reasoning: "Candidate has relevant experience but some gaps in required technologies."
+  matched_skills: {}
+  gaps: {}
+  provider: chatgpt
+  model: gpt-4o-mini
+  input_tokens: 950
+  output_tokens: 480
+  cost: 0.001200
+  is_valid: true
+  processed_at: <%= 2.days.ago %>
+  expires_at: <%= 88.days.from_now %>

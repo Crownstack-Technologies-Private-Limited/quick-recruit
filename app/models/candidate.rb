@@ -9,10 +9,17 @@ class Candidate < ApplicationRecord
   has_many :notes, as: :notable, dependent: :destroy
   has_many :events, as: :eventable, dependent: :destroy
   has_many :emails, dependent: :destroy
+  has_many :ai_scores, dependent: :destroy
 
   has_and_belongs_to_many :campaigns
 
   normalizes :email, with: ->email { email.downcase.strip }
+
+  # Detect resume attachment changes and invalidate stale AI scores.
+  # Active Storage doesn't fire candidate-level callbacks for attach/detach,
+  # so we hook after_commit and compare the current blob checksum to the
+  # stored resume_hash column.
+  after_commit :sync_resume_hash_and_invalidate_scores
 
   validates :email, uniqueness: true
   validate :correct_resume_mime_type
@@ -57,6 +64,23 @@ class Candidate < ApplicationRecord
   end
   
   def status_color
+  end
+
+  def sync_resume_hash_and_invalidate_scores
+    current_checksum = resume.attached? ? resume.blob.checksum : nil
+    return if current_checksum == resume_hash
+
+    invalidate_ai_scores!('resume_updated') if resume_hash.present? && current_checksum.present? && current_checksum != resume_hash
+
+    update_column(:resume_hash, current_checksum)
+  end
+
+  def invalidate_ai_scores!(reason)
+    ai_scores.where(is_valid: true).update_all(
+      is_valid:            false,
+      invalidation_reason: reason,
+      invalidated_at:      Time.current
+    )
   end
 
   def being_recycled?

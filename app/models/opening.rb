@@ -3,9 +3,11 @@ class Opening < ApplicationRecord
   belongs_to :owner, class_name: "User", foreign_key: "owner_id", optional: true
   has_rich_text :description
   has_rich_text :note
-  has_many :candidates, dependent: :destroy
   has_many :openings_users, class_name: "OpeningsUser", dependent: :destroy
   has_many :interviewers, class_name: "User", through: :openings_users, source: :user
+  has_many :candidates, dependent: :destroy
+  has_many :ai_scores, dependent: :destroy
+  has_many :ai_scoring_logs, dependent: :destroy
 
   scope :active, -> { where(active: true) }
 

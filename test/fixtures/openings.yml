@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+web_opening:
+  title: Senior Web Developer
+  location: San Francisco
+  opening_type: full_time
+  priority: p1
+  active: true
+  role: software_engineer
+  owner: recruiter
+
+mobile_opening:
+  title: Mobile Developer
+  location: New York
+  opening_type: full_time
+  priority: p2
+  active: true
+  role: software_engineer
+  owner: recruiter

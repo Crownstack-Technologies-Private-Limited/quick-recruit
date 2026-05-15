@@ -1,0 +1,163 @@
+<div class="flex min-h-full flex-col">
+  <!-- 3 column wrapper -->
+  <div class="mx-auto w-full grow lg:flex xl:px-2 -ml-4">
+    <!-- Left sidebar & main wrapper -->
+    <div class="w-80 xl:flex">
+      <%= render partial: "opening/profile", locals: { opening: @opening } %>
+    </div>
+    <div class="flex-1">
+      <!-- Main area -->
+      <%= render partial: "opening/nav", locals: { opening: @opening } %>
+      <div class="p-6 text-sm">
+        <!-- Back link -->
+        <div class="mb-4">
+          <%= link_to "Back to AI Scores", opening_ai_scores_path(@opening), class: "text-blue-600 dark:text-blue-500 hover:underline text-sm" %>
+        </div>
+
+        <!-- Invalidation warning -->
+        <% if !@ai_score.is_valid %>
+          <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-md">
+            <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+              <span class="font-semibold">This score is invalid</span> (<%= @ai_score.invalidation_reason %>) and may be outdated.
+            </p>
+          </div>
+        <% end %>
+
+        <!-- Candidate info card -->
+        <div class="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3"><%= @candidate.name %></h3>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p class="text-gray-500 dark:text-gray-400">Email</p>
+              <p class="text-gray-900 dark:text-white"><%= @candidate.email %></p>
+            </div>
+            <div>
+              <p class="text-gray-500 dark:text-gray-400">Phone</p>
+              <p class="text-gray-900 dark:text-white"><%= @candidate.phone.presence || "-" %></p>
+            </div>
+            <div>
+              <p class="text-gray-500 dark:text-gray-400">Current Title</p>
+              <p class="text-gray-900 dark:text-white"><%= @candidate.current_title.presence || "-" %></p>
+            </div>
+            <div>
+              <p class="text-gray-500 dark:text-gray-400">Current Company</p>
+              <p class="text-gray-900 dark:text-white"><%= @candidate.current_company.presence || "-" %></p>
+            </div>
+            <div>
+              <p class="text-gray-500 dark:text-gray-400">Years of Experience</p>
+              <p class="text-gray-900 dark:text-white"><%= @candidate.experience.presence || "-" %></p>
+            </div>
+            <div>
+              <p class="text-gray-500 dark:text-gray-400">Resume</p>
+              <% if @candidate.resume.attached? %>
+                <p class="text-blue-600 dark:text-blue-500 hover:underline">
+                  <%= link_to "Download resume", url_for(@candidate.resume) %>
+                </p>
+              <% else %>
+                <p class="text-gray-900 dark:text-white">-</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Score badge -->
+        <div class="mb-6 flex items-center gap-4">
+          <div class="inline-block">
+            <p class="text-gray-500 dark:text-gray-400 text-xs mb-1">Overall Score</p>
+            <span class="inline-block px-4 py-2 rounded-full font-bold text-lg <%= ai_score_badge_classes(@ai_score.score) %>">
+              <%= @ai_score.score %> - <%= ai_score_fit_label(@ai_score.score) %>
+            </span>
+          </div>
+        </div>
+
+        <!-- Detailed Reasoning -->
+        <div class="mb-6">
+          <h4 class="font-semibold text-gray-900 dark:text-white mb-2">Detailed Reasoning</h4>
+          <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap"><%= @ai_score.reasoning %></p>
+        </div>
+
+        <!-- Matched Skills -->
+        <% if @ai_score.matched_skills.present? && @ai_score.matched_skills.any? %>
+          <div class="mb-6">
+            <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Matched Skills</h4>
+            <div class="flex flex-wrap gap-2">
+              <% @ai_score.matched_skills.each do |skill, confidence| %>
+                <span class="inline-block px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-sm">
+                  <%= skill %>: <%= confidence %>%
+                </span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Gaps -->
+        <% if @ai_score.gaps.present? && @ai_score.gaps.any? %>
+          <div class="mb-6">
+            <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Gaps</h4>
+            <ul class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+              <% @ai_score.gaps.each do |gap, description| %>
+                <li><span class="font-medium"><%= gap %></span>: <%= description %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <!-- Strengths -->
+        <% if @ai_score.strengths.present? %>
+          <div class="mb-6">
+            <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Strengths</h4>
+            <ul class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+              <% @ai_score.strengths.split("\n").each do |strength| %>
+                <% if strength.strip.present? %>
+                  <li><%= strength.strip %></li>
+                <% end %>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <!-- Concerns -->
+        <% if @ai_score.concerns.present? %>
+          <div class="mb-6">
+            <h4 class="font-semibold text-gray-900 dark:text-white mb-3">Concerns</h4>
+            <ul class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+              <% @ai_score.concerns.split("\n").each do |concern| %>
+                <% if concern.strip.present? %>
+                  <li><%= concern.strip %></li>
+                <% end %>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <!-- Footer with metadata -->
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Provider: <%= @ai_score.provider %> ·
+            Model: <%= @ai_score.model %> ·
+            Tokens in/out: <%= @ai_score.input_tokens %>/<%= @ai_score.output_tokens %> ·
+            Cost: $<%= number_with_precision(@ai_score.cost, precision: 6) %> ·
+            Scored: <%= time_ago_in_words(@ai_score.processed_at) %> ago
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="shrink-0 border-t border-gray-200 px-4 py-6 sm:px-6 lg:w-80 lg:border-l lg:border-t-0 lg:pr-8 xl:pr-6">
+      <!-- Right column area -->
+      <div>
+        <h5 class="mr-3 font-semibold dark:text-white">Score Details</h5>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">AI-generated assessment for this candidate. Use this to inform your screening decision, but always conduct human review.</p>
+        <div class="bg-gray-50 dark:bg-gray-800 rounded p-3 text-xs space-y-2">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400">Score Status</p>
+            <p class="font-semibold text-gray-900 dark:text-white"><%= @ai_score.is_valid ? "Valid" : "Invalid" %></p>
+          </div>
+          <div>
+            <p class="text-gray-600 dark:text-gray-400">Generated</p>
+            <p class="text-gray-900 dark:text-white"><%= display_created_at_with_time(@ai_score) %></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

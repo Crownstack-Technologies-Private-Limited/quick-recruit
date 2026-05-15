@@ -1,0 +1,31 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+john_doe:
+  first_name: John
+  last_name: Doe
+  email: john.doe@example.com
+  phone: "9876543210"
+  location: San Francisco
+  experience: 5
+  bucket: recent
+  role: software_engineer
+  source: linkedin
+  opening: web_opening
+  user: recruiter
+  owner: recruiter
+  next_recycle_on: <%= 30.days.from_now %>
+
+jane_smith:
+  first_name: Jane
+  last_name: Smith
+  email: jane.smith@example.com
+  phone: "9876543211"
+  location: New York
+  experience: 3
+  bucket: recent
+  role: software_engineer
+  source: referral
+  opening: web_opening
+  user: recruiter
+  owner: recruiter
+  next_recycle_on: <%= 30.days.from_now %>

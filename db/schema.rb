@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_08_120859) do
+ActiveRecord::Schema[8.0].define(version: 2026_05_15_114951) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -50,6 +50,63 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_08_120859) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "ai_scores", force: :cascade do |t|
+    t.bigint "candidate_id", null: false
+    t.bigint "opening_id", null: false
+    t.integer "score", null: false
+    t.text "reasoning", null: false
+    t.jsonb "matched_skills", default: {}, null: false
+    t.jsonb "gaps", default: {}, null: false
+    t.text "strengths"
+    t.text "concerns"
+    t.string "provider", null: false
+    t.string "model", null: false
+    t.integer "input_tokens", default: 0, null: false
+    t.integer "output_tokens", default: 0, null: false
+    t.decimal "cost", precision: 10, scale: 6, default: "0.0", null: false
+    t.string "resume_version_hash"
+    t.string "jd_version_hash"
+    t.boolean "is_valid", default: true, null: false
+    t.string "invalidation_reason"
+    t.datetime "processed_at"
+    t.datetime "expires_at"
+    t.datetime "invalidated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["candidate_id", "is_valid"], name: "index_ai_scores_on_candidate_id_and_is_valid"
+    t.index ["candidate_id", "opening_id", "is_valid"], name: "index_ai_scores_one_valid_per_pair", unique: true, where: "(is_valid = true)"
+    t.index ["candidate_id"], name: "index_ai_scores_on_candidate_id"
+    t.index ["opening_id", "score"], name: "index_ai_scores_on_opening_and_score"
+    t.index ["opening_id"], name: "index_ai_scores_on_opening_id"
+    t.index ["processed_at"], name: "index_ai_scores_on_processed_at"
+    t.index ["provider"], name: "index_ai_scores_on_provider"
+    t.index ["resume_version_hash", "jd_version_hash"], name: "index_ai_scores_dedup"
+  end
+
+  create_table "ai_scoring_logs", force: :cascade do |t|
+    t.bigint "opening_id", null: false
+    t.bigint "requested_by_id", null: false
+    t.string "batch_id", null: false
+    t.integer "total_candidates", default: 0, null: false
+    t.integer "successfully_scored", default: 0, null: false
+    t.integer "failed_count", default: 0, null: false
+    t.string "provider", null: false
+    t.string "model", null: false
+    t.bigint "total_input_tokens", default: 0, null: false
+    t.bigint "total_output_tokens", default: 0, null: false
+    t.decimal "total_cost", precision: 12, scale: 6, default: "0.0", null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.text "error_details"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["batch_id"], name: "index_ai_scoring_logs_on_batch_id", unique: true
+    t.index ["opening_id", "created_at"], name: "index_logs_on_opening_and_date"
+    t.index ["opening_id"], name: "index_ai_scoring_logs_on_opening_id"
+    t.index ["requested_by_id"], name: "index_ai_scoring_logs_on_requested_by_id"
   end
 
   create_table "campaigns", force: :cascade do |t|
@@ -104,9 +161,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_08_120859) do
     t.datetime "status_updated_on", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.date "joining_date"
     t.datetime "next_recycle_on", null: false
+    t.string "resume_hash"
     t.index ["email"], name: "unique_emails", unique: true
     t.index ["opening_id"], name: "index_candidates_on_opening_id"
     t.index ["owner_id"], name: "index_candidates_on_owner_id"
+    t.index ["resume_hash"], name: "index_candidates_on_resume_hash"
     t.index ["role_id"], name: "index_candidates_on_role_id"
     t.index ["source_id"], name: "index_candidates_on_source_id"
     t.index ["user_id"], name: "index_candidates_on_user_id"

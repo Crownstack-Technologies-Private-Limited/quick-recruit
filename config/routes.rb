@@ -79,11 +79,12 @@ Rails.application.routes.draw do
     end
 
     scope module: "opening" do
-      resources :interviews
+      resources :interviews, only: [:index]
       resources :associations
       resources :champions
       resources :note
       resources :description
+      resources :ai_scores, only: [:index, :show, :create]
       get "timeline", to: "timeline#index"
     end
   end
