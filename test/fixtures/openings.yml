@@ -8,6 +8,8 @@ web_opening:
   active: true
   role: software_engineer
   owner: recruiter
+  min_experience: 3
+  max_experience: 5
 
 mobile_opening:
   title: Mobile Developer

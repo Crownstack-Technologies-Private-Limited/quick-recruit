@@ -55,6 +55,17 @@
           <div><%= form.text_field :second_round_score, "Second Round Score Survey (Optional)", required: false %></div>
 
           <div><%= form.text_field :hr_round_score, "HR Round Score Survey (Optional)", required: false %></div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="inline-flex items-center mb-1 text-sm font-medium text-gray-900 dark:text-white">Min Experience (years)</label>
+              <%= form.number_field :min_experience, class: "form-text-field", placeholder: "e.g. 3", min: 0 %>
+            </div>
+            <div>
+              <label class="inline-flex items-center mb-1 text-sm font-medium text-gray-900 dark:text-white">Max Experience (years)</label>
+              <%= form.number_field :max_experience, class: "form-text-field", placeholder: "e.g. 5", min: 0 %>
+            </div>
+          </div>
         </div>
       </div>
 

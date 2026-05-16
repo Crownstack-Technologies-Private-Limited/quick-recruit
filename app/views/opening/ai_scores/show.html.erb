@@ -1,14 +1,14 @@
 <div class="flex min-h-full flex-col">
   <!-- 3 column wrapper -->
-  <div class="mx-auto w-full grow lg:flex xl:px-2 -ml-4">
+  <div class="mx-auto w-full grow lg:flex xl:px-2">
     <!-- Left sidebar & main wrapper -->
-    <div class="w-80 xl:flex">
+    <div class="w-80 shrink-0 xl:flex">
       <%= render partial: "opening/profile", locals: { opening: @opening } %>
     </div>
-    <div class="flex-1">
+    <div class="flex-1 min-w-0 bg-gray-50 dark:bg-gray-950 min-h-screen">
       <!-- Main area -->
       <%= render partial: "opening/nav", locals: { opening: @opening } %>
-      <div class="p-6 text-sm">
+      <div class="px-6 py-6 text-sm">
         <!-- Back link -->
         <div class="mb-4">
           <%= link_to "Back to AI Scores", opening_ai_scores_path(@opening), class: "text-blue-600 dark:text-blue-500 hover:underline text-sm" %>
@@ -142,7 +142,7 @@
         </div>
       </div>
     </div>
-    <div class="shrink-0 border-t border-gray-200 px-4 py-6 sm:px-6 lg:w-80 lg:border-l lg:border-t-0 lg:pr-8 xl:pr-6">
+    <div class="shrink-0 border-t border-gray-200 px-4 py-6 sm:px-6 lg:w-80 lg:border-l lg:border-t-0 lg:pr-8 xl:pr-6 dark:border-gray-700">
       <!-- Right column area -->
       <div>
         <h5 class="mr-3 font-semibold dark:text-white">Score Details</h5>

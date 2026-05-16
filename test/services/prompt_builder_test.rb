@@ -131,4 +131,63 @@ class PromptBuilderTest < ActiveSupport::TestCase
     assert_includes prompt, '"matched_skills"'
     assert_includes prompt, '"gaps"'
   end
+
+  test 'build includes experience fit rule when opening has min and max experience' do
+    @opening.min_experience = 3
+    @opening.max_experience = 5
+    prompt = PromptBuilder.build_scoring_prompt(
+      candidate: @candidate,
+      opening: @opening,
+      resume_text: "Resume content"
+    )
+    assert_includes prompt, 'Experience fit rule'
+    assert_includes prompt, '3–5 years'
+    assert_includes prompt, 'deduct 30–40 points'
+  end
+
+  test 'build includes correct tolerance bounds for experience range' do
+    @opening.min_experience = 3
+    @opening.max_experience = 5
+    prompt = PromptBuilder.build_scoring_prompt(
+      candidate: @candidate,
+      opening: @opening,
+      resume_text: "Resume content"
+    )
+    # lower = 3 * 0.65 = 1.9, upper = 5 * 1.35 = 6.8
+    assert_includes prompt, '1.9–6.8 years'
+  end
+
+  test 'build omits experience fit rule when opening has no experience range' do
+    @opening.min_experience = nil
+    @opening.max_experience = nil
+    prompt = PromptBuilder.build_scoring_prompt(
+      candidate: @candidate,
+      opening: @opening,
+      resume_text: "Resume content"
+    )
+    assert_not_includes prompt, 'Experience fit rule'
+  end
+
+  test 'build includes experience fit rule with only min_experience set' do
+    @opening.min_experience = 2
+    @opening.max_experience = nil
+    prompt = PromptBuilder.build_scoring_prompt(
+      candidate: @candidate,
+      opening: @opening,
+      resume_text: "Resume content"
+    )
+    assert_includes prompt, 'at least 2 years'
+    assert_includes prompt, 'Experience fit rule'
+  end
+
+  test 'build flags overqualified candidate concern in experience rule' do
+    @opening.min_experience = 3
+    @opening.max_experience = 5
+    prompt = PromptBuilder.build_scoring_prompt(
+      candidate: @candidate,
+      opening: @opening,
+      resume_text: "Resume content"
+    )
+    assert_includes prompt, 'overqualified'
+  end
 end

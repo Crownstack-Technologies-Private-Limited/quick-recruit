@@ -45,6 +45,10 @@ class Opening::AiScoresController < Opening::BaseController
       end
     end
 
+    page = [params[:page].to_i, 1].max
+    @pagy = Pagy.new(count: @ai_scores.length, page: page, limit: 25)
+    @ai_scores = @ai_scores.slice(@pagy.offset, @pagy.limit) || []
+
     @latest_log = @opening.ai_scoring_logs.recent.first
     @cost_estimate_usd = estimate_cost_for_opening
   end

@@ -69,10 +69,52 @@ class PromptBuilder
       }
 
       Scoring guide: 80-100 strong fit, 60-79 decent, 40-59 partial, 0-39 poor.
+
+      #{experience_fit_instructions}
     PROMPT
   end
 
   private
+
+  def experience_fit_instructions
+    min_exp = @opening.try(:min_experience)
+    max_exp = @opening.try(:max_experience)
+    return "" unless min_exp.present? || max_exp.present?
+
+    range_text = if min_exp.present? && max_exp.present?
+      "#{min_exp}–#{max_exp} years"
+    elsif min_exp.present?
+      "at least #{min_exp} years"
+    else
+      "up to #{max_exp} years"
+    end
+
+    lower_bound = min_exp.present? ? (min_exp * 0.65).round(1) : nil
+    upper_bound = max_exp.present? ? (max_exp * 1.35).round(1) : nil
+
+    bounds_text = if lower_bound && upper_bound
+      "#{lower_bound}–#{upper_bound} years"
+    elsif upper_bound
+      "up to #{upper_bound} years"
+    else
+      "at least #{lower_bound} years"
+    end
+
+    <<~EXP.strip
+      Experience fit rule (MANDATORY — apply this before assigning the final score):
+      Required experience for this role: #{range_text}.
+      Acceptable range with ±35% tolerance: #{bounds_text}.
+
+      Candidate has #{@candidate.experience} years of experience.
+
+      Apply the following penalty to the skill-fit score if the candidate's experience falls outside the acceptable range:
+      - Within acceptable range (#{bounds_text}): no penalty.
+      - Outside by up to 2× the boundary (moderately over/under): deduct 15–25 points.
+      - Outside by more than 2× the boundary (e.g., 14 years for a #{range_text} role): deduct 30–40 points.
+
+      Being heavily overqualified is NOT a strong fit. An experienced senior for a junior role will likely be disengaged or leave quickly — this is a concern, not a strength.
+    EXP
+  end
 
   # Strip control chars and collapse whitespace to make injection harder
   # and reduce token waste.

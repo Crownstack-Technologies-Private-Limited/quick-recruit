@@ -4,13 +4,13 @@
 <% end %>
 
 <div class="flex min-h-full flex-col">
-  <div class="mx-auto w-full grow lg:flex xl:px-2 -ml-4">
+  <div class="mx-auto w-full grow lg:flex xl:px-2">
     <!-- Left sidebar -->
-    <div class="w-80 xl:flex">
+    <div class="w-80 shrink-0 xl:flex">
       <%= render partial: "opening/profile", locals: { opening: @opening } %>
     </div>
 
-    <div class="flex-1 bg-gray-50 dark:bg-gray-950 min-h-screen">
+    <div class="flex-1 min-w-0 bg-gray-50 dark:bg-gray-950 min-h-screen">
       <%= render partial: "opening/nav", locals: { opening: @opening } %>
 
       <div class="px-6 py-6">
@@ -60,13 +60,11 @@
           </div>
 
         <!-- Warning banner -->
-        <% elsif @latest_log&.status == 'cost_capped' || @latest_log&.status == 'failed' %>
+        <% elsif @latest_log&.status == 'failed' %>
           <div class="mb-5 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800 p-4 flex items-start gap-3">
             <span class="text-yellow-500 text-base mt-0.5">⚠</span>
             <div class="flex-1">
-              <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
-                <%= @latest_log.status == 'cost_capped' ? 'Cost cap reached' : 'Last run failed' %>
-              </p>
+              <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">Last run failed</p>
               <% if @latest_log.error_details.present? %>
                 <p class="text-xs text-yellow-700 dark:text-yellow-400 mt-1"><%= @latest_log.error_details.first(120) %></p>
               <% end %>
@@ -81,7 +79,7 @@
         <% unless in_progress %>
           <div class="mb-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-4 flex items-center justify-between">
             <div class="flex flex-col gap-1">
-              <% unless @latest_log&.status.in?(%w[cost_capped failed]) %>
+              <% unless @latest_log&.status == 'failed' %>
                 <%= button_to "Generate Scores", opening_ai_scores_path(@opening), method: :post, class: "btn-primary self-start" %>
               <% end %>
               <p class="text-xs text-gray-400 dark:text-gray-500">AI scores assist screening only — every decision still requires human review.</p>
@@ -92,6 +90,22 @@
             </div>
           </div>
         <% end %>
+
+        <!-- Bucket scope note -->
+        <div class="mb-5 rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950 px-4 py-3 text-xs text-indigo-700 dark:text-indigo-300">
+          <div class="flex flex-wrap items-center gap-2">
+            <svg class="w-4 h-4 shrink-0 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20A10 10 0 0112 2z"/>
+            </svg>
+            <span class="font-medium">Scored buckets only:</span>
+            <% %w[recent hot pipeline leads inbound nurture].each do |b| %>
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 font-semibold bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                <%= b.humanize %>
+              </span>
+            <% end %>
+          </div>
+          <p class="mt-1.5 ml-6 text-indigo-500 dark:text-indigo-400">Archive, icebox, joinings, champions, alumni, employees, contractors &amp; incomplete are skipped.</p>
+        </div>
 
         <!-- Filters -->
         <% any_filter = params[:query].present? || params[:location].present? || params[:min_ctc].present? || params[:max_ctc].present? %>
@@ -113,12 +127,14 @@
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Min Expected CTC</label>
                 <%= f.number_field :min_ctc, value: params[:min_ctc], placeholder: "e.g. 500000",
-                      class: "text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+                      class: "text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                      onwheel: "this.blur()" %>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Max Expected CTC</label>
                 <%= f.number_field :max_ctc, value: params[:max_ctc], placeholder: "e.g. 1500000",
-                      class: "text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+                      class: "text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                      onwheel: "this.blur()" %>
               </div>
               <div class="flex items-center gap-2">
                 <%= f.submit "Apply Filters", class: "text-sm cursor-pointer btn-primary" %>
@@ -133,7 +149,7 @@
 
         <!-- Results table card -->
         <% if @ai_scores.any? %>
-          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xs overflow-hidden">
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xs overflow-x-auto">
             <table class="w-full text-sm text-left">
               <thead>
                 <tr class="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
@@ -143,6 +159,7 @@
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Location</th>
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Current CTC</th>
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Expected CTC</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Bucket</th>
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide whitespace-nowrap">Added On</th>
                 </tr>
               </thead>
@@ -169,12 +186,33 @@
                     <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.location.presence || "-" %></td>
                     <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.current_ctc.presence || "-" %></td>
                     <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.expected_ctc.presence || "-" %></td>
+                    <td class="px-5 py-4">
+                      <% bucket = ai_score.candidate.bucket %>
+                      <% bucket_colors = {
+                        "recent"   => "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+                        "hot"      => "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+                        "pipeline" => "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+                        "leads"    => "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+                        "inbound"  => "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+                        "nurture"  => "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                      } %>
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold <%= bucket_colors.fetch(bucket, "bg-gray-100 text-gray-500") %>">
+                        <%= bucket.humanize %>
+                      </span>
+                    </td>
                     <td class="px-5 py-4 text-gray-400 dark:text-gray-500 whitespace-nowrap"><%= display_date(ai_score.candidate.created_at) %></td>
                   </tr>
                 <% end %>
               </tbody>
             </table>
           </div>
+
+          <% if @pagy.pages > 1 %>
+            <div class="mt-4 flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
+              <span><%= @pagy.count %> results &middot; page <%= @pagy.page %> of <%= @pagy.pages %></span>
+              <%= render partial: "shared/paginator", locals: { pagy: @pagy } %>
+            </div>
+          <% end %>
 
         <% elsif !in_progress %>
           <div class="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-10 text-center">
