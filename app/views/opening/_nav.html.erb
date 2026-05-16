@@ -7,6 +7,10 @@
         <li class="block lg:inline"><a href="<%= opening_associations_path(@opening) %>" class="<%= current_page?(opening_associations_path(@opening)) ? "selected-tab" : "unselected-tab" %>">Associations</a></li>
         <li class="block lg:inline"><a href="<%= opening_note_index_path(@opening) %>" class="<%= current_page?(opening_note_index_path(@opening)) ? "selected-tab" : "unselected-tab" %>">Internal Note</a></li>
         <li class="block lg:inline"><a href="<%= opening_description_index_path(@opening) %>" class="<%= current_page?(opening_description_index_path(@opening)) ? "selected-tab" : "unselected-tab" %>">Job Description</a></li>
+        <li class="block lg:inline">
+          <a href="<%= opening_ai_scores_path(@opening) %>"
+             class="<%= request.path.start_with?(opening_ai_scores_path(@opening)) ? "selected-tab" : "unselected-tab" %>">AI Score</a>
+        </li>
       </ul>
     </div>
   </div>

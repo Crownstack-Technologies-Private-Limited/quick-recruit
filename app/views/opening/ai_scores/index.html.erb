@@ -1,0 +1,267 @@
+<% in_progress = @latest_log&.status.in?(%w[pending processing]) %>
+<% if in_progress %>
+  <meta http-equiv="refresh" content="5">
+<% end %>
+
+<div class="flex min-h-full flex-col">
+  <div class="mx-auto w-full grow lg:flex xl:px-2">
+    <!-- Left sidebar -->
+    <div class="w-80 shrink-0 xl:flex">
+      <%= render partial: "opening/profile", locals: { opening: @opening } %>
+    </div>
+
+    <div class="flex-1 min-w-0 bg-gray-50 dark:bg-gray-950 min-h-screen">
+      <%= render partial: "opening/nav", locals: { opening: @opening } %>
+
+      <div class="px-6 py-6">
+
+        <!-- In-progress banner -->
+        <% if in_progress %>
+          <% total     = @latest_log.total_candidates.to_i %>
+          <% scored    = @latest_log.successfully_scored.to_i %>
+          <% failed    = @latest_log.failed_count.to_i %>
+          <% processed = scored + failed %>
+          <% pct       = total > 0 ? (processed * 100.0 / total).round : 0 %>
+
+          <div class="mb-5 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800 p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse"></div>
+                <span class="text-sm font-semibold text-blue-800 dark:text-blue-200">Scoring in progress</span>
+              </div>
+              <span class="text-xs text-blue-600 dark:text-blue-400">Auto-refreshing every 5s</span>
+            </div>
+            <div class="w-full bg-blue-200 dark:bg-blue-900 rounded-full h-2 mb-3">
+              <div class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: <%= pct %>%"></div>
+            </div>
+            <div class="grid grid-cols-4 gap-3 text-center text-xs">
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-blue-100 dark:border-blue-900">
+                <p class="text-base font-bold text-gray-800 dark:text-white"><%= total > 0 ? total : '…' %></p>
+                <p class="text-gray-500 mt-0.5">Total</p>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-blue-100 dark:border-blue-900">
+                <p class="text-base font-bold text-green-600"><%= scored %></p>
+                <p class="text-gray-500 mt-0.5">Scored</p>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-blue-100 dark:border-blue-900">
+                <p class="text-base font-bold text-red-500"><%= failed %></p>
+                <p class="text-gray-500 mt-0.5">Skipped</p>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-blue-100 dark:border-blue-900">
+                <p class="text-base font-bold text-gray-700 dark:text-gray-200"><%= pct %>%</p>
+                <p class="text-gray-500 mt-0.5">Done</p>
+              </div>
+            </div>
+            <% if failed > 0 %>
+              <p class="mt-2.5 text-xs text-yellow-700 dark:text-yellow-400">
+                <%= failed %> candidate(s) skipped — PDF missing, corrupted, or too short to read.
+              </p>
+            <% end %>
+          </div>
+
+        <!-- Warning banner -->
+        <% elsif @latest_log&.status == 'failed' %>
+          <div class="mb-5 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800 p-4 flex items-start gap-3">
+            <span class="text-yellow-500 text-base mt-0.5">⚠</span>
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">Last run failed</p>
+              <% if @latest_log.error_details.present? %>
+                <p class="text-xs text-yellow-700 dark:text-yellow-400 mt-1"><%= @latest_log.error_details.first(120) %></p>
+              <% end %>
+              <div class="mt-3">
+                <%= button_to "Try Again", opening_ai_scores_path(@opening), method: :post, class: "btn-primary text-xs" %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Header card -->
+        <% unless in_progress %>
+          <div class="mb-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-4 flex items-center justify-between">
+            <div class="flex flex-col gap-1">
+              <% unless @latest_log&.status == 'failed' %>
+                <%= button_to "Generate Scores", opening_ai_scores_path(@opening), method: :post, class: "btn-primary self-start" %>
+              <% end %>
+              <p class="text-xs text-gray-400 dark:text-gray-500">AI scores assist screening only — every decision still requires human review.</p>
+            </div>
+            <div class="text-right shrink-0 ml-4">
+              <p class="text-sm font-semibold text-gray-700 dark:text-gray-200">ChatGPT · gpt-4o-mini</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Est. cost: $<%= number_with_precision(@cost_estimate_usd, precision: 4) %></p>
+            </div>
+          </div>
+        <% end %>
+
+        <!-- Bucket scope note -->
+        <div class="mb-5 rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-950 px-4 py-3 text-xs text-indigo-700 dark:text-indigo-300">
+          <div class="flex flex-wrap items-center gap-2">
+            <svg class="w-4 h-4 shrink-0 text-indigo-400" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 110 20A10 10 0 0112 2z"/>
+            </svg>
+            <span class="font-medium">Scored buckets only:</span>
+            <% %w[recent hot pipeline leads inbound nurture].each do |b| %>
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 font-semibold bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                <%= b.humanize %>
+              </span>
+            <% end %>
+          </div>
+          <p class="mt-1.5 ml-6 text-indigo-500 dark:text-indigo-400">Archive, icebox, joinings, champions, alumni, employees, contractors &amp; incomplete are skipped.</p>
+        </div>
+
+        <!-- Filters -->
+        <% any_filter = params[:query].present? || params[:location].present? || params[:min_ctc].present? || params[:max_ctc].present? %>
+        <div class="mb-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-4">
+          <%= form_with url: opening_ai_scores_path(@opening), method: :get, local: true do |f| %>
+            <div class="flex flex-wrap gap-4 items-end">
+              <div class="flex flex-col gap-1 flex-1 min-w-48">
+                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Search</label>
+                <%= f.search_field :query, value: params[:query], placeholder: "Name or email…",
+                      class: "text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" %>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Location</label>
+                <%= f.select :location,
+                      [["All locations", ""]] + @locations.map { |l| [l, l] },
+                      { selected: params[:location] },
+                      { class: "text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-40" } %>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Min Expected CTC</label>
+                <%= f.number_field :min_ctc, value: params[:min_ctc], placeholder: "e.g. 500000",
+                      class: "text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                      onwheel: "this.blur()" %>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Max Expected CTC</label>
+                <%= f.number_field :max_ctc, value: params[:max_ctc], placeholder: "e.g. 1500000",
+                      class: "text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-3 py-2 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                      onwheel: "this.blur()" %>
+              </div>
+              <div class="flex items-center gap-2">
+                <%= f.submit "Apply Filters", class: "text-sm cursor-pointer btn-primary" %>
+                <% if any_filter %>
+                  <%= link_to "Clear", opening_ai_scores_path(@opening),
+                        class: "text-sm px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Results table card -->
+        <% if @ai_scores.any? %>
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xs overflow-x-auto">
+            <table class="w-full text-sm text-left">
+              <thead>
+                <tr class="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <th class="px-5 py-3.5 w-10 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">#</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Score</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Candidate</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Location</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Exp (yrs)</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Current CTC</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Expected CTC</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Bucket</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide whitespace-nowrap">Added On</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
+                <% @ai_scores.each_with_index do |ai_score, i| %>
+                  <tr class="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-100">
+                    <td class="px-5 py-4 text-xs font-medium text-gray-300 dark:text-gray-600 tabular-nums">
+                      <%= i + 1 %>
+                    </td>
+                    <td class="px-5 py-4">
+                      <%= link_to opening_ai_score_path(@opening, ai_score) do %>
+                        <span class="inline-flex w-10 h-10 items-center justify-center rounded-full font-bold text-sm <%= ai_score_badge_classes(ai_score.score) %>">
+                          <%= ai_score.score %>
+                        </span>
+                      <% end %>
+                    </td>
+                    <td class="px-5 py-4">
+                      <div class="flex flex-col gap-0.5">
+                        <%= link_to ai_score.candidate.name, opening_ai_score_path(@opening, ai_score),
+                              class: "font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors" %>
+                        <span class="text-xs text-gray-400 dark:text-gray-500"><%= ai_score.candidate.email %></span>
+                      </div>
+                    </td>
+                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.location.presence || "-" %></td>
+                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.experience.present? ? ai_score.candidate.experience.to_s.sub(/\.0$/, '') : "-" %></td>
+                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.current_ctc.presence || "-" %></td>
+                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.expected_ctc.presence || "-" %></td>
+                    <td class="px-5 py-4">
+                      <% bucket = ai_score.candidate.bucket %>
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold <%= bucket_badge_classes(bucket) %>">
+                        <%= bucket.humanize %>
+                      </span>
+                    </td>
+                    <td class="px-5 py-4 text-gray-400 dark:text-gray-500 whitespace-nowrap"><%= display_date(ai_score.candidate.created_at) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <% if @pagy.pages > 1 %>
+            <div class="mt-4 flex items-center justify-between text-xs text-gray-400 dark:text-gray-500">
+              <span><%= @pagy.count %> results &middot; page <%= @pagy.page %> of <%= @pagy.pages %></span>
+              <%= render partial: "shared/paginator", locals: { pagy: @pagy } %>
+            </div>
+          <% end %>
+
+        <% elsif !in_progress %>
+          <div class="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-10 text-center">
+            <p class="text-sm text-gray-400 dark:text-gray-500 mb-4">No AI scores yet for this opening.</p>
+            <%= button_to "Generate Scores", opening_ai_scores_path(@opening), method: :post, class: "btn-primary" %>
+          </div>
+        <% end %>
+
+      </div>
+    </div>
+
+    <!-- Right sidebar -->
+    <div class="shrink-0 border-t border-gray-200 px-4 py-6 sm:px-6 lg:w-80 lg:border-l lg:border-t-0 lg:pr-8 xl:pr-6 dark:border-gray-700">
+      <div>
+        <h5 class="font-semibold text-gray-800 dark:text-white mb-1">AI Scoring</h5>
+        <p class="text-gray-400 dark:text-gray-500 text-xs mb-4">Candidate screening via ChatGPT gpt-4o-mini.</p>
+
+        <% if @latest_log.present? %>
+          <div class="rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-3 text-xs space-y-2">
+            <p class="font-semibold text-gray-600 dark:text-gray-300">Last Run</p>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Status</span>
+              <span class="font-medium <%= @latest_log.status == 'completed' ? 'text-green-600' : @latest_log.status.in?(%w[pending processing]) ? 'text-blue-600' : 'text-yellow-600' %>">
+                <%= @latest_log.status.humanize %>
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Model</span>
+              <span class="font-medium text-gray-700 dark:text-gray-200"><%= @latest_log.model %></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Scored</span>
+              <span class="font-medium text-gray-700 dark:text-gray-200"><%= @latest_log.successfully_scored %> / <%= @latest_log.total_candidates %></span>
+            </div>
+            <% if @latest_log.failed_count > 0 %>
+              <div class="flex justify-between">
+                <span class="text-gray-400">Skipped</span>
+                <span class="font-medium text-red-500"><%= @latest_log.failed_count %></span>
+              </div>
+            <% end %>
+            <% if @latest_log.total_cost.to_f > 0 %>
+              <div class="flex justify-between">
+                <span class="text-gray-400">Cost</span>
+                <span class="font-medium text-gray-700 dark:text-gray-200">$<%= number_with_precision(@latest_log.total_cost, precision: 5) %></span>
+              </div>
+            <% end %>
+            <% if @latest_log.completed_at.present? %>
+              <div class="flex justify-between">
+                <span class="text-gray-400">Completed</span>
+                <span class="font-medium text-gray-700 dark:text-gray-200"><%= display_date(@latest_log.completed_at) %></span>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -46,6 +46,17 @@
         <div><label for="user-role" class="inline-flex items-center mb-1 text-sm font-medium text-gray-900 dark:text-white">Owner</label><%= form.collection_select(:owner_id, User.recruiters, :id, :name, { :prompt => "Select Owner" }, :class => "form-text-field", :required => true) %></div>
       </div>
 
+      <div class="grid gap-4 sm:grid-cols-2 sm:gap-6 pt-4">
+        <div>
+          <label class="inline-flex items-center mb-1 text-sm font-medium text-gray-900 dark:text-white">Min Experience (years)</label>
+          <%= form.number_field :min_experience, class: "form-text-field", placeholder: "e.g. 3", min: 0 %>
+        </div>
+        <div>
+          <label class="inline-flex items-center mb-1 text-sm font-medium text-gray-900 dark:text-white">Max Experience (years)</label>
+          <%= form.number_field :max_experience, class: "form-text-field", placeholder: "e.g. 5", min: 0 %>
+        </div>
+      </div>
+
       <button type="submit" class="btn-primary mt-4">
         Add Job Opening
       </button>

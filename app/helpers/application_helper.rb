@@ -2,6 +2,7 @@ module ApplicationHelper
   include AvatarHelper
   include ButtonHelper
   include AutoLinkHelper
+  include AiScoresHelper
 
   include Pagy::Frontend
 

@@ -1,0 +1,7 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+software_engineer:
+  title: Software Engineer
+
+product_manager:
+  title: Product Manager

@@ -56,7 +56,7 @@ class OpeningsController < BaseController
   private
 
   def openings_params
-    params.require(:opening).permit(:title, :role_id, :active, :priority, :owner_id, :resume_screening_checklist, :telephonic_screening_checklist, :first_round_score, :second_round_score, :hr_round_score)
+    params.require(:opening).permit(:title, :role_id, :active, :priority, :owner_id, :resume_screening_checklist, :telephonic_screening_checklist, :first_round_score, :second_round_score, :hr_round_score, :min_experience, :max_experience)
   end
 
   def set_opening

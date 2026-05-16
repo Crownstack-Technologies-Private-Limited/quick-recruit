@@ -60,6 +60,12 @@ gem "pundit"
 gem "redis"
 gem "csv"
 
+# OpenAI API client (used by ChatgptProvider)
+gem 'ruby-openai', '~> 7.0'
+
+# PDF text extraction (used by ResumeExtractor)
+gem 'pdf-reader', '~> 2.12'
+
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
@@ -78,6 +84,7 @@ group :test do
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
+  gem "climate_control"
 end
 
 group :production do
