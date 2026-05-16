@@ -157,6 +157,7 @@
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Score</th>
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Candidate</th>
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Location</th>
+                  <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Exp (yrs)</th>
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Current CTC</th>
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Expected CTC</th>
                   <th class="px-5 py-3.5 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Bucket</th>
@@ -184,6 +185,7 @@
                       </div>
                     </td>
                     <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.location.presence || "-" %></td>
+                    <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.experience.present? ? ai_score.candidate.experience.to_s.sub(/\.0$/, '') : "-" %></td>
                     <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.current_ctc.presence || "-" %></td>
                     <td class="px-5 py-4 text-gray-500 dark:text-gray-400"><%= ai_score.candidate.expected_ctc.presence || "-" %></td>
                     <td class="px-5 py-4">

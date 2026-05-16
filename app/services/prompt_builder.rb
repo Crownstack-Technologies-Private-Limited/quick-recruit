@@ -53,6 +53,7 @@ class PromptBuilder
       Current Title: #{@candidate.current_title}
       Current Company: #{@candidate.current_company}
       Years of Experience: #{@candidate.experience}
+      Location: #{@candidate.location.presence || 'unknown'}
 
       #{RESUME_DELIM_OPEN}
       #{sanitize(@resume_text)}
@@ -71,6 +72,8 @@ class PromptBuilder
       Scoring guide: 80-100 strong fit, 60-79 decent, 40-59 partial, 0-39 poor.
 
       #{experience_fit_instructions}
+
+      #{location_fit_instructions}
     PROMPT
   end
 
@@ -100,20 +103,75 @@ class PromptBuilder
       "at least #{lower_bound} years"
     end
 
+    candidate_exp = @candidate.experience.to_f
+
+    gap_below = lower_bound ? [lower_bound - candidate_exp, 0].max.round(1) : 0
+    gap_above = upper_bound ? [candidate_exp - upper_bound, 0].max.round(1) : 0
+    gap = [gap_below, gap_above].max
+
+    penalty_note = if gap == 0
+      "Candidate is within the acceptable range — no experience penalty."
+    elsif gap <= 1
+      "Candidate is #{gap} yr(s) outside the acceptable range — deduct 15 points."
+    elsif gap <= 3
+      "Candidate is #{gap} yr(s) outside the acceptable range — deduct 25–30 points."
+    else
+      "Candidate is #{gap} yr(s) outside the acceptable range — deduct 35–45 points."
+    end
+
     <<~EXP.strip
       Experience fit rule (MANDATORY — apply this before assigning the final score):
-      Required experience for this role: #{range_text}.
-      Acceptable range with ±35% tolerance: #{bounds_text}.
+      Required experience: #{range_text}. Maximum tolerance: ±35%.
+      Acceptable range: #{bounds_text}. ANY candidate outside this range MUST score lower — no exceptions.
 
       Candidate has #{@candidate.experience} years of experience.
+      Pre-computed guidance: #{penalty_note}
 
-      Apply the following penalty to the skill-fit score if the candidate's experience falls outside the acceptable range:
-      - Within acceptable range (#{bounds_text}): no penalty.
-      - Outside by up to 2× the boundary (moderately over/under): deduct 15–25 points.
-      - Outside by more than 2× the boundary (e.g., 14 years for a #{range_text} role): deduct 30–40 points.
+      Penalty table — deduct from skill-fit score:
+      - Within #{bounds_text}: no penalty.
+      - 0–1 yr outside the range: deduct 15 points.
+      - 1–3 yrs outside the range: deduct 25–30 points.
+      - More than 3 yrs outside the range: deduct 35–45 points.
 
-      Being heavily overqualified is NOT a strong fit. An experienced senior for a junior role will likely be disengaged or leave quickly — this is a concern, not a strength.
+      Both underqualified AND overqualified candidates are penalised equally.
+      Being overqualified is NOT a strength — an over-experienced hire will likely disengage or leave early. Mark it as a concern.
     EXP
+  end
+
+  NCR_TERMS = ['delhi', 'ncr', 'noida', 'gurugram', 'gurgaon', 'faridabad',
+               'ghaziabad', 'haryana', 'uttar pradesh', 'u.p', ' up', 'h.r', ' hr'].freeze
+
+  def location_fit_instructions
+    opening_location = @opening.try(:location).to_s.strip
+    candidate_location = @candidate.try(:location).to_s.strip
+    return "" if opening_location.blank?
+
+    opening_in_ncr = NCR_TERMS.any? { |t| opening_location.downcase.include?(t) }
+
+    ncr_clause = if opening_in_ncr
+      <<~NCR
+        Delhi/NCR metro equivalence: Delhi, New Delhi, Noida, Greater Noida, Gurugram,
+        Gurgaon, Faridabad, Ghaziabad, and candidates mentioning Haryana (H.R.) or
+        Uttar Pradesh (U.P.) near Delhi are all part of the same metro area and count
+        as a location match for this opening.
+      NCR
+    else
+      ""
+    end
+
+    <<~LOC.strip
+      Location fit rule:
+      Opening location: #{opening_location}.
+      Candidate location: #{candidate_location.presence || 'unknown'}.
+
+      #{ncr_clause}
+      Scoring:
+      - Candidate is in the same city or metro area as the opening: no location penalty.
+      - Candidate is in a different city/region: deduct 8–12 points and list it as a concern.
+      - Candidate location is unknown: no penalty, but note it.
+
+      Location is a secondary factor — cap total location deduction at 12 points regardless of distance.
+    LOC
   end
 
   # Strip control chars and collapse whitespace to make injection harder

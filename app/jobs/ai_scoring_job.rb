@@ -54,19 +54,19 @@ class AiScoringJob < ApplicationJob
     log.update!(total_candidates: candidates.size)
 
     candidates.each_slice(CHUNK_SIZE) do |chunk|
-      chunk.each { |c| service.score(candidate: c, opening: opening) }
+      chunk.each do |c|
+        result = service.score(candidate: c, opening: opening)
+        log.increment!(:successfully_scored) if result.status == :reused
+      end
     end
 
     log.update!(status: 'completed', completed_at: Time.current)
   end
 
   def candidates_for(opening)
-    already_scored = AiScore.valid_scores.where(opening_id: opening.id).select(:candidate_id)
-
     Candidate
       .where(opening_id: opening.id)
       .where(bucket: SCOREABLE_BUCKETS)
-      .where.not(id: already_scored)
       .joins(:resume_attachment)
       .includes(resume_attachment: :blob)
       .order(:id)
