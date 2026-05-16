@@ -19,7 +19,7 @@ class Candidate < ApplicationRecord
   # Active Storage doesn't fire candidate-level callbacks for attach/detach,
   # so we hook after_commit and compare the current blob checksum to the
   # stored resume_hash column.
-  after_commit :sync_resume_hash_and_invalidate_scores
+  after_commit :sync_resume_hash_and_invalidate_scores, on: [:create, :update]
 
   validates :email, uniqueness: true
   validate :correct_resume_mime_type, if: -> { new_record? || resume.attachment&.new_record? }
@@ -70,7 +70,7 @@ class Candidate < ApplicationRecord
     current_checksum = resume.attached? ? resume.blob.checksum : nil
     return if current_checksum == resume_hash
 
-    invalidate_ai_scores!('resume_updated') if resume_hash.present? && current_checksum.present? && current_checksum != resume_hash
+    invalidate_ai_scores!('resume_updated') if resume_hash.present?
 
     update_column(:resume_hash, current_checksum)
   end

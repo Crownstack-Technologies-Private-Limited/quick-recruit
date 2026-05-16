@@ -26,9 +26,8 @@ class AiScoringJob < ApplicationJob
     # jobs with the same batch_id can't both slip through the pending check.
     should_process = false
     AiScoringLog.transaction do
-      AiScoringLog.connection.execute(
-        "SELECT pg_advisory_xact_lock(hashtext('ai_scoring:opening:#{opening_id.to_i}'))"
-      )
+      quoted_key = AiScoringLog.connection.quote("ai_scoring:opening:#{opening_id.to_i}")
+      AiScoringLog.connection.execute("SELECT pg_advisory_xact_lock(hashtext(#{quoted_key}))")
       log.reload
       next if %w[processing completed failed].include?(log.status)
       log.update!(status: 'processing', started_at: Time.current)

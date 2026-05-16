@@ -1,11 +1,15 @@
 class Opening::AiScoresController < Opening::BaseController
   before_action :set_opening
 
+  AVG_INPUT_TOKENS_PER_CANDIDATE  = 2_000
+  AVG_OUTPUT_TOKENS_PER_CANDIDATE = 350
+
   # GET /openings/:opening_id/ai_scores
   def index
     @locations = Candidate
                    .joins(:ai_scores)
                    .where(ai_scores: { opening_id: @opening.id, is_valid: true })
+                   .where(bucket: AiScoringJob::SCOREABLE_BUCKETS)
                    .reorder(nil)
                    .distinct
                    .pluck(:location)
@@ -17,7 +21,10 @@ class Opening::AiScoresController < Opening::BaseController
                    .sort
                    .map(&:titleize)
 
-    scope = @opening.ai_scores.valid_scores.sorted_by_score.includes(:candidate)
+    scope = @opening.ai_scores.valid_scores.sorted_by_score
+                    .joins(:candidate)
+                    .where(candidates: { bucket: AiScoringJob::SCOREABLE_BUCKETS })
+                    .preload(:candidate)
 
     if params[:location].present?
       matching_candidate_ids = Candidate.unscoped
@@ -102,7 +109,7 @@ class Opening::AiScoresController < Opening::BaseController
   # Real cost is recorded after the batch finishes.
   def estimate_cost_for_opening
     candidate_count = Candidate.where(opening_id: @opening.id, bucket: AiScoringJob::SCOREABLE_BUCKETS).count
-    candidate_count * ChatgptProvider::INPUT_PRICE_PER_1M / 1_000_000.0 * 2_000 +
-      candidate_count * ChatgptProvider::OUTPUT_PRICE_PER_1M / 1_000_000.0 * 350
+    candidate_count * ChatgptProvider::INPUT_PRICE_PER_1M / 1_000_000.0 * AVG_INPUT_TOKENS_PER_CANDIDATE +
+      candidate_count * ChatgptProvider::OUTPUT_PRICE_PER_1M / 1_000_000.0 * AVG_OUTPUT_TOKENS_PER_CANDIDATE
   end
 end

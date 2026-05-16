@@ -16,7 +16,7 @@ class CreateAiScoringLogs < ActiveRecord::Migration[8.0]
       t.bigint :total_output_tokens, default: 0, null: false
       t.decimal :total_cost, precision: 12, scale: 6, default: 0, null: false
 
-      t.string :status, default: 'pending', null: false  # pending|processing|completed|failed|cost_capped
+      t.string :status, default: 'pending', null: false  # pending|processing|completed|failed
       t.datetime :started_at
       t.datetime :completed_at
       t.text :error_details
