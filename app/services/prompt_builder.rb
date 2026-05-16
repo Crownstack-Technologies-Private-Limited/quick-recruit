@@ -179,7 +179,7 @@ class PromptBuilder
   def sanitize(text)
     # Remove control characters and collapse whitespace
     # First, remove common control characters
-    text = text.gsub(/[\x00-\x08\x0B\x0C\x0E-\x1F]/, ' ')
+    text = text.gsub(/[\x00-\x08\x0B\x0C\x0D\x0E-\x1F]/, ' ')
     text
       .gsub(/[ \t]+/, ' ')
       .gsub(/\n{3,}/, "\n\n")

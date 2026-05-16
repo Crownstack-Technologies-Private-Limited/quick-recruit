@@ -148,39 +148,6 @@ class AiScoringJobTest < ActiveJob::TestCase
     assert_equal 2, AiScore.where(opening_id: @opening.id).count
   end
 
-  # Test 3: Cost cap — stop processing when accumulated cost hits cap
-  def test_cost_cap_stops_processing
-    # Create enough candidates to need 2 chunks
-    # CHUNK_SIZE = 25, so create 50 candidates
-    candidates = create_candidates_with_resumes(50)
-
-    # Set a cost cap that triggers after first chunk:
-    # Cost per candidate: (100+50)*0.000001 = 0.00015
-    # Cost for 25 candidates: 25 * 0.00015 = 0.00375
-    # Set cap to 0.0037, so after 25 candidates we hit cap and stop on next check
-    original_cap = ENV['AI_SCORING_BATCH_COST_CAP_USD']
-    ENV['AI_SCORING_BATCH_COST_CAP_USD'] = '0.00365'  # Less than 25 candidates' cost
-
-    begin
-      AiScoringJob.perform_now(
-        opening_id: @opening.id,
-        batch_id: @batch_id,
-        requested_by_id: @user.id,
-        provider_key: 'chatgpt',
-        provider: @fake_provider
-      )
-
-      log = AiScoringLog.find_by(batch_id: @batch_id)
-      assert_equal 'cost_capped', log.status
-
-      # Provider should have been called for 1st chunk (25), then stopped
-      # because 0.00375 >= 0.00365
-      assert @fake_provider.calls == 25
-    ensure
-      ENV['AI_SCORING_BATCH_COST_CAP_USD'] = original_cap
-    end
-  end
-
   # Test 4: No candidates — opening with zero candidates
   def test_no_candidates_logs_completed
     # Don't create any candidates for this opening

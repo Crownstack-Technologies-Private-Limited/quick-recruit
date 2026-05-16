@@ -1,6 +1,5 @@
-class AddNoteAndBucketToAiScores < ActiveRecord::Migration[7.1]
+class AddNoteAndBucketToAiScores < ActiveRecord::Migration[8.0]
   def change
     add_column :ai_scores, :note, :text
-    add_column :ai_scores, :candidate_bucket, :string
   end
 end

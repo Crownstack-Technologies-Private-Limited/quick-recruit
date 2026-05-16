@@ -26,15 +26,15 @@ class Opening::AiScoresController < Opening::BaseController
       scope = scope.where(candidate_id: matching_candidate_ids)
     end
 
-    @ai_scores = scope.to_a
-
     if params[:query].present?
-      q = params[:query].strip.downcase
-      @ai_scores = @ai_scores.select do |s|
-        s.candidate.name.downcase.include?(q) ||
-          s.candidate.email.downcase.include?(q)
-      end
+      q = "%#{params[:query].strip.downcase}%"
+      scope = scope.joins(:candidate).where(
+        "LOWER(candidates.first_name || ' ' || candidates.last_name) LIKE :q OR LOWER(candidates.email) LIKE :q",
+        q: q
+      )
     end
+
+    @ai_scores = scope.to_a
 
     if params[:min_ctc].present? || params[:max_ctc].present?
       min_ctc = params[:min_ctc].presence&.to_f
@@ -101,7 +101,7 @@ class Opening::AiScoresController < Opening::BaseController
   # Rough estimate for the UI: count candidates × per-candidate baseline.
   # Real cost is recorded after the batch finishes.
   def estimate_cost_for_opening
-    candidate_count = Candidate.where(opening_id: @opening.id).count
+    candidate_count = Candidate.where(opening_id: @opening.id, bucket: AiScoringJob::SCOREABLE_BUCKETS).count
     candidate_count * ChatgptProvider::INPUT_PRICE_PER_1M / 1_000_000.0 * 2_000 +
       candidate_count * ChatgptProvider::OUTPUT_PRICE_PER_1M / 1_000_000.0 * 350
   end

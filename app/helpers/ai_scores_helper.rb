@@ -24,4 +24,16 @@ module AiScoresHelper
     return "-" if raw.blank? || raw.match?(/\A(na|n\/a|none|null|-)\z/i)
     raw
   end
+
+  def bucket_badge_classes(bucket)
+    colors = {
+      "recent"   => "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
+      "hot"      => "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+      "pipeline" => "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+      "leads"    => "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+      "inbound"  => "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+      "nurture"  => "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+    }
+    colors.fetch(bucket.to_s, "bg-gray-100 text-gray-500")
+  end
 end
