@@ -28,7 +28,10 @@ class AiScoringService
     jd_hash     = PromptBuilder.jd_hash(opening)
 
     existing = find_existing_valid_score(candidate, opening, resume_hash, jd_hash)
-    return reused_result(existing) if existing
+    if existing
+      record_log_reused
+      return reused_result(existing)
+    end
 
     prompt = PromptBuilder.build_scoring_prompt(
       candidate:   candidate,
@@ -115,6 +118,11 @@ class AiScoringService
         response[:tokens][:input], response[:tokens][:output], cost
       ])
     end
+  end
+
+  def record_log_reused
+    return unless @log
+    @log.increment!(:successfully_scored)
   end
 
   def record_log_failure

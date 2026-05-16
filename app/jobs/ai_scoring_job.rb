@@ -54,8 +54,7 @@ class AiScoringJob < ApplicationJob
 
     candidates.each_slice(CHUNK_SIZE) do |chunk|
       chunk.each do |c|
-        result = service.score(candidate: c, opening: opening)
-        log.increment!(:successfully_scored) if result.status == :reused
+        service.score(candidate: c, opening: opening)
       end
     end
 

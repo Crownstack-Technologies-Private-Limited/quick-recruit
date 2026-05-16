@@ -1,3 +1,5 @@
+require 'open-uri'
+
 class ResumeExtractor
   MIN_USABLE_LENGTH = 200  # chars; below this, treat as extraction failure
 
@@ -43,7 +45,6 @@ class ResumeExtractor
   end
 
   def read_pdf_via_presigned_url
-    require 'open-uri'
     url = @candidate.resume.blob.url(expires_in: 5.minutes)
     URI.open(url, "rb") do |file|
       reader = PDF::Reader.new(file)

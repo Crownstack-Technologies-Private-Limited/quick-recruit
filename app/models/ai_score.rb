@@ -7,7 +7,7 @@ class AiScore < ApplicationRecord
   validates :provider, presence: true
   validates :model, presence: true
 
-  scope :valid_scores,    -> { where(is_valid: true) }
+  scope :valid_scores,    -> { where(is_valid: true).where("expires_at IS NULL OR expires_at > ?", Time.current) }
   scope :invalid_scores,  -> { where(is_valid: false) }
   scope :sorted_by_score, -> { order(score: :desc) }
 

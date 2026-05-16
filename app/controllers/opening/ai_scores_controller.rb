@@ -6,6 +6,7 @@ class Opening::AiScoresController < Opening::BaseController
 
   # GET /openings/:opening_id/ai_scores
   def index
+    authorize @opening, :show?
     @locations = Candidate
                    .joins(:ai_scores)
                    .where(ai_scores: { opening_id: @opening.id, is_valid: true })
@@ -63,6 +64,7 @@ class Opening::AiScoresController < Opening::BaseController
   # GET /openings/:opening_id/ai_scores/:id
   # Detail view (used by the candidate detail modal).
   def show
+    authorize @opening, :show?
     @ai_score = @opening.ai_scores.includes(candidate: :user).find(params[:id])
     @candidate = @ai_score.candidate
   end
@@ -109,7 +111,9 @@ class Opening::AiScoresController < Opening::BaseController
   # Real cost is recorded after the batch finishes.
   def estimate_cost_for_opening
     candidate_count = Candidate.where(opening_id: @opening.id, bucket: AiScoringJob::SCOREABLE_BUCKETS).count
-    candidate_count * ChatgptProvider::INPUT_PRICE_PER_1M / 1_000_000.0 * AVG_INPUT_TOKENS_PER_CANDIDATE +
-      candidate_count * ChatgptProvider::OUTPUT_PRICE_PER_1M / 1_000_000.0 * AVG_OUTPUT_TOKENS_PER_CANDIDATE
+    ChatgptProvider.new(api_key: 'estimate').estimate_cost(
+      input_tokens:  candidate_count * AVG_INPUT_TOKENS_PER_CANDIDATE,
+      output_tokens: candidate_count * AVG_OUTPUT_TOKENS_PER_CANDIDATE
+    )
   end
 end
