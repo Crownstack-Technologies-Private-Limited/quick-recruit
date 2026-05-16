@@ -24,6 +24,12 @@ class BaseAiProvider
     raise NotImplementedError
   end
 
+  # Returns: { must_have: Array<String>, good_to_have: Array<String>,
+  #            tokens: { input: Integer, output: Integer } }
+  def extract_requirements(prompt:)
+    raise NotImplementedError
+  end
+
   def estimate_cost(input_tokens:, output_tokens:)
     raise NotImplementedError
   end

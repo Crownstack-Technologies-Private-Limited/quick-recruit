@@ -29,6 +29,31 @@ class PromptBuilder
     end
   end
 
+  def self.build_extraction_prompt(opening)
+    <<~PROMPT
+      Extract the requirements from the job description below and classify each as
+      MUST HAVE (non-negotiable) or GOOD TO HAVE (preferred but not essential).
+
+      #{JD_DELIM_OPEN}
+      Title: #{opening.title}
+      Location: #{opening.location}
+      #{jd_text_for(opening)}
+      #{JD_DELIM_CLOSE}
+
+      Respond with JSON only, matching this schema exactly:
+      {
+        "must_have": ["<requirement>", ...],
+        "good_to_have": ["<requirement>", ...]
+      }
+
+      Rules:
+      - must_have: skills, qualifications, or experience explicitly stated as required/mandatory
+      - good_to_have: skills listed as preferred, a plus, or beneficial
+      - Each item should be concise (3-10 words)
+      - Limit to 10 items per category
+    PROMPT
+  end
+
   def initialize(candidate:, opening:, resume_text:)
     @candidate   = candidate
     @opening     = opening
@@ -45,7 +70,7 @@ class PromptBuilder
       #{JD_DELIM_OPEN}
       Title: #{@opening.title}
       Location: #{@opening.location}
-      #{self.class.jd_text_for(@opening)}
+      #{jd_requirements_section}
       #{JD_DELIM_CLOSE}
 
       Candidate metadata (trusted, from our database):
@@ -71,6 +96,8 @@ class PromptBuilder
 
       Scoring guide: 80-100 strong fit, 60-79 decent, 40-59 partial, 0-39 poor.
 
+      #{requirements_weighting_instructions}
+
       #{experience_fit_instructions}
 
       #{location_fit_instructions}
@@ -78,6 +105,35 @@ class PromptBuilder
   end
 
   private
+
+  def jd_requirements_section
+    must_have    = Array(@opening.try(:must_have))
+    good_to_have = Array(@opening.try(:good_to_have))
+
+    if must_have.present? || good_to_have.present?
+      parts = []
+      parts << "Must Have:\n#{must_have.map { |r| "- #{r}" }.join("\n")}"    if must_have.present?
+      parts << "Good to Have:\n#{good_to_have.map { |r| "- #{r}" }.join("\n")}" if good_to_have.present?
+      parts.join("\n\n")
+    else
+      self.class.jd_text_for(@opening)
+    end
+  end
+
+  def requirements_weighting_instructions
+    must_have    = Array(@opening.try(:must_have))
+    good_to_have = Array(@opening.try(:good_to_have))
+    return "" unless must_have.present? || good_to_have.present?
+
+    <<~RULES.strip
+      Requirements weighting (MANDATORY — apply before assigning the final score):
+      - Must Have requirements are non-negotiable. Each unmet must-have deducts 10–15 points.
+        A candidate missing more than half the must-haves MUST score below 50.
+      - Good to Have requirements are bonuses. Each matched good-to-have adds 2–5 points,
+        but missing them should not penalise the candidate.
+      - List unmet must-haves in "gaps" and matched good-to-haves in "strengths".
+    RULES
+  end
 
   def experience_fit_instructions
     min_exp = @opening.try(:min_experience)

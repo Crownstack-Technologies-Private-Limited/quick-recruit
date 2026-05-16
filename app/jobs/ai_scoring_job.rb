@@ -47,8 +47,10 @@ class AiScoringJob < ApplicationJob
   def process_batch(log, provider_instance = nil)
     opening   = Opening.find(log.opening_id)
     provider  = provider_instance || provider_for(log.provider)
-    service   = AiScoringService.new(provider: provider, log: log)
 
+    JdExtractionService.ensure_extracted(opening: opening, provider: provider)
+
+    service    = AiScoringService.new(provider: provider, log: log)
     candidates = candidates_for(opening)
     log.update!(total_candidates: candidates.size)
 
