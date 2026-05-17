@@ -28,16 +28,13 @@ class Opening::AiScoresController < Opening::BaseController
                     .preload(:candidate)
 
     if params[:location].present?
-      matching_candidate_ids = Candidate.unscoped
-                                 .where("LOWER(TRIM(location)) = ?", params[:location].strip.downcase)
-                                 .select(:id)
-      scope = scope.where(candidate_id: matching_candidate_ids)
+      scope = scope.where("candidates.location ILIKE ?", "%#{params[:location].strip}%")
     end
 
     if params[:query].present?
-      q = "%#{params[:query].strip.downcase}%"
-      scope = scope.joins(:candidate).where(
-        "LOWER(candidates.first_name || ' ' || candidates.last_name) LIKE :q OR LOWER(candidates.email) LIKE :q",
+      q = "%#{params[:query].strip}%"
+      scope = scope.where(
+        "candidates.first_name || ' ' || candidates.last_name ILIKE :q OR candidates.email ILIKE :q OR candidates.location ILIKE :q",
         q: q
       )
     end
