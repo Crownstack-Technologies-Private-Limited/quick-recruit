@@ -1,0 +1,107 @@
+<div class="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+
+  <%# Card header: job title + scored-at %>
+  <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+    <div>
+      <p class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Job opening</p>
+      <h4 class="text-base font-semibold text-gray-900 dark:text-white"><%= ai_score.opening.title %></h4>
+    </div>
+    <p class="text-xs text-gray-400 dark:text-gray-500 shrink-0 ml-4">
+      Scored <%= time_ago_in_words(ai_score.processed_at) %> ago
+    </p>
+  </div>
+
+  <div class="px-5 py-5 text-sm">
+
+    <%# Invalidation warning %>
+    <% unless ai_score.is_valid %>
+      <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-md">
+        <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+          <span class="font-semibold">This score is invalid</span>
+          (<%= ai_score.invalidation_reason %>) and may be outdated.
+        </p>
+      </div>
+    <% end %>
+
+    <%# Score badge + fit label %>
+    <div class="mb-6 flex items-center gap-3">
+      <span class="inline-flex w-14 h-14 items-center justify-center rounded-full font-bold text-xl <%= ai_score_badge_classes(ai_score.score) %>">
+        <%= ai_score.score %>
+      </span>
+      <span class="text-base font-medium text-gray-700 dark:text-gray-300">
+        <%= ai_score_fit_label(ai_score.score) %>
+      </span>
+    </div>
+
+    <%# Detailed Reasoning %>
+    <div class="mb-6">
+      <h5 class="font-semibold text-gray-900 dark:text-white mb-2">Detailed Reasoning</h5>
+      <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap"><%= ai_score.reasoning %></p>
+    </div>
+
+    <%# Matched Skills %>
+    <% if ai_score.matched_skills.present? && ai_score.matched_skills.any? %>
+      <div class="mb-6">
+        <h5 class="font-semibold text-gray-900 dark:text-white mb-3">Matched Skills</h5>
+        <div class="flex flex-wrap gap-2">
+          <% ai_score.matched_skills.each do |skill, confidence| %>
+            <span class="inline-block px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full text-sm">
+              <%= skill %>: <%= confidence %>%
+            </span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Gaps %>
+    <% if ai_score.gaps.present? && ai_score.gaps.any? %>
+      <div class="mb-6">
+        <h5 class="font-semibold text-gray-900 dark:text-white mb-3">Gaps</h5>
+        <ul class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+          <% ai_score.gaps.each do |gap, description| %>
+            <li><span class="font-medium"><%= gap %></span>: <%= description %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%# Strengths %>
+    <% if ai_score.strengths.present? %>
+      <div class="mb-6">
+        <h5 class="font-semibold text-gray-900 dark:text-white mb-3">Strengths</h5>
+        <ul class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+          <% ai_score.strengths.split("\n").each do |strength| %>
+            <% if strength.strip.present? %>
+              <li><%= strength.strip %></li>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%# Concerns %>
+    <% if ai_score.concerns.present? %>
+      <div class="mb-6">
+        <h5 class="font-semibold text-gray-900 dark:text-white mb-3">Concerns</h5>
+        <ul class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+          <% ai_score.concerns.split("\n").each do |concern| %>
+            <% if concern.strip.present? %>
+              <li><%= concern.strip %></li>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%# Footer metadata %>
+    <div class="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+      <p class="text-xs text-gray-400 dark:text-gray-500">
+        Provider: <%= ai_score.provider %> ·
+        Model: <%= ai_score.model %> ·
+        Tokens in/out: <%= ai_score.input_tokens %>/<%= ai_score.output_tokens %> ·
+        Cost: $<%= number_with_precision(ai_score.cost, precision: 6) %>
+      </p>
+    </div>
+
+  </div>
+</div>

@@ -1,1 +1,37 @@
-<p>Analysis</p>
+<div class="flex min-h-full flex-col">
+  <div class="mx-auto w-full grow lg:flex xl:px-2 -ml-4">
+
+    <%# Left sidebar: candidate profile %>
+    <div class="w-80 xl:flex min-h-screen">
+      <%= render partial: "candidate/profile", locals: { candidate: @candidate } %>
+    </div>
+
+    <%# Center: nav + content %>
+    <div class="flex-1">
+      <%= render partial: "candidate/nav" %>
+      <div class="px-0 lg:px-6 py-6">
+        <% if @ai_scores.empty? %>
+          <div class="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-10 text-center">
+            <p class="text-sm text-gray-400 dark:text-gray-500">No AI analysis found for this candidate.</p>
+          </div>
+        <% else %>
+          <% @ai_scores.each do |ai_score| %>
+            <%= render partial: "candidate/analysis/score", locals: { ai_score: ai_score } %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Right sidebar %>
+    <div class="shrink-0 border-t border-gray-200 px-4 py-6 sm:px-6 lg:w-80 lg:border-l lg:border-t-0 lg:pr-8 xl:pr-6 dark:border-gray-700">
+      <div>
+        <h5 class="font-semibold dark:text-white mb-1">AI Analysis</h5>
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          AI scores for this candidate across all openings they have been evaluated for.
+          Scores are shown most recent first.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
