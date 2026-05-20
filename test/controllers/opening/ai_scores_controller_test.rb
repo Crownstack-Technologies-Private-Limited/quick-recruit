@@ -184,4 +184,59 @@ class Opening::AiScoresControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     # Verify the controller fetches latest log
   end
+
+  test "index filters by a single location via locations array" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { locations: ["San Francisco"] }
+    assert_response :success
+    assigns(:ai_scores).each do |score|
+      assert_match /san francisco/i, score.candidate.location.to_s
+    end
+  end
+
+  test "index filters by multiple locations" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { locations: ["San Francisco", "New York"] }
+    assert_response :success
+    assigns(:ai_scores).each do |score|
+      assert_match /san francisco|new york/i, score.candidate.location.to_s
+    end
+  end
+
+  test "index returns all results when locations array is empty" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { locations: [] }
+    assert_response :success
+  end
+
+  test "index filters out results with date_from in the future" do
+    login_user(@user)
+    future_date = 1.day.from_now.strftime("%Y-%m-%d")
+    get opening_ai_scores_path(@opening), params: { date_from: future_date }
+    assert_response :success
+    assert_equal [], assigns(:ai_scores)
+  end
+
+  test "index filters out results with date_to in the past" do
+    login_user(@user)
+    past_date = 1.year.ago.strftime("%Y-%m-%d")
+    get opening_ai_scores_path(@opening), params: { date_to: past_date }
+    assert_response :success
+    assert_equal [], assigns(:ai_scores)
+  end
+
+  test "index returns results for a date range spanning now" do
+    login_user(@user)
+    from = 1.year.ago.strftime("%Y-%m-%d")
+    to   = 1.year.from_now.strftime("%Y-%m-%d")
+    get opening_ai_scores_path(@opening), params: { date_from: from, date_to: to }
+    assert_response :success
+    assert assigns(:ai_scores).length > 0
+  end
+
+  test "index ignores malformed date params gracefully" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { date_from: "not-a-date", date_to: "also-bad" }
+    assert_response :success
+  end
 end

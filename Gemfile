@@ -85,6 +85,8 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
   gem "climate_control"
+  gem "minitest", "~> 5.1"
+  gem "rails-controller-testing"
 end
 
 group :production do
