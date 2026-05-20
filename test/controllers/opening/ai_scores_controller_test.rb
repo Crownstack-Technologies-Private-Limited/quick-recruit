@@ -198,9 +198,17 @@ class Opening::AiScoresControllerTest < ActionDispatch::IntegrationTest
     login_user(@user)
     get opening_ai_scores_path(@opening), params: { locations: ["San Francisco", "New York"] }
     assert_response :success
+    assert_equal 2, assigns(:ai_scores).length
     assigns(:ai_scores).each do |score|
       assert_match /san francisco|new york/i, score.candidate.location.to_s
     end
+  end
+
+  test "index returns empty results when no candidates match location filter" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { locations: ["Austin"] }
+    assert_response :success
+    assert_equal [], assigns(:ai_scores)
   end
 
   test "index returns all results when locations array is empty" do
