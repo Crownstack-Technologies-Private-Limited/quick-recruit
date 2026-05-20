@@ -85,7 +85,7 @@ Rails.application.routes.draw do
       resources :champions
       resources :note
       resources :description
-      resources :ai_scores, only: [:index, :show, :create]
+      resources :ai_scores, only: [:index, :create]
       get "timeline", to: "timeline#index"
     end
   end

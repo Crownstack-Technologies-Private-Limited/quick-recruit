@@ -58,14 +58,6 @@ class Opening::AiScoresController < Opening::BaseController
     @cost_estimate_usd = estimate_cost_for_opening
   end
 
-  # GET /openings/:opening_id/ai_scores/:id
-  # Detail view (used by the candidate detail modal).
-  def show
-    authorize @opening, :show?
-    @ai_score = @opening.ai_scores.includes(candidate: :user).find(params[:id])
-    @candidate = @ai_score.candidate
-  end
-
   # POST /openings/:opening_id/ai_scores
   # Enqueues a scoring batch. Idempotent on batch_id: callers may pass
   # a client-generated UUID; otherwise we generate one server-side.

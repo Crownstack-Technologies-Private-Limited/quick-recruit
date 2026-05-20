@@ -66,21 +66,6 @@ class Opening::AiScoresControllerTest < ActionDispatch::IntegrationTest
     assert scores[0].score >= scores[1].score
   end
 
-  test "show returns the requested score" do
-    login_user(@user)
-    get opening_ai_score_path(@opening, @ai_score)
-    assert_response :success
-  end
-
-  test "show returns 404 for a score belonging to a different opening" do
-    login_user(@user)
-    other_opening = openings(:mobile_opening)
-
-    # Try to access web_opening's score via mobile_opening
-    get opening_ai_score_path(other_opening, @ai_score)
-    assert_response :not_found
-  end
-
   test "create enqueues AiScoringJob" do
     login_user(@admin)
 
