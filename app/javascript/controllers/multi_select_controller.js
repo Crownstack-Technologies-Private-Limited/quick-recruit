@@ -9,7 +9,9 @@ export default class extends Controller {
   }
 
   disconnect() {
-    document.removeEventListener("click", this._outsideClick)
+    if (this._outsideClick) {
+      document.removeEventListener("click", this._outsideClick)
+    }
   }
 
   toggle(event) {
@@ -18,6 +20,7 @@ export default class extends Controller {
   }
 
   updateLabel() {
+    if (!this.hasLabelTarget) return
     const checked = this.checkboxTargets.filter(c => c.checked)
     if (checked.length === 0) {
       this.labelTarget.textContent = "All locations"
