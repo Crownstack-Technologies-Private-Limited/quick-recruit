@@ -6,19 +6,22 @@
       <p class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Job opening</p>
       <h4 class="text-base font-semibold text-gray-900 dark:text-white"><%= ai_score.opening.title %></h4>
     </div>
-    <p class="text-xs text-gray-400 dark:text-gray-500 shrink-0 ml-4">
-      Scored <%= time_ago_in_words(ai_score.processed_at) %> ago
-    </p>
+    <% if ai_score.processed_at.present? %>
+      <p class="text-xs text-gray-400 dark:text-gray-500 shrink-0 ml-4">
+        Scored <%= time_ago_in_words(ai_score.processed_at) %> ago
+      </p>
+    <% end %>
   </div>
 
   <div class="px-5 py-5 text-sm">
 
     <%# Invalidation warning %>
-    <% unless ai_score.is_valid %>
+    <% unless ai_score.still_valid? %>
       <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-md">
         <p class="text-yellow-800 dark:text-yellow-200 text-sm">
           <span class="font-semibold">This score is invalid</span>
-          (<%= ai_score.invalidation_reason %>) and may be outdated.
+          <% if ai_score.invalidation_reason.present? %>(<%= ai_score.invalidation_reason %>)<% end %>
+          and may be outdated.
         </p>
       </div>
     <% end %>
