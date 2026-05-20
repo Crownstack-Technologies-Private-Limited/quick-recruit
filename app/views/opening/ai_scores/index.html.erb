@@ -156,11 +156,9 @@
                       </svg>
                     </div>
                     <%= f.text_field :date_from,
+                          id: "ai_scores_date_from",
                           value: params[:date_from],
                           placeholder: "From",
-                          "datepicker" => "",
-                          "datepicker-autohide" => "",
-                          "datepicker-format" => "yyyy-mm-dd",
                           autocomplete: "off",
                           class: "text-sm bg-transparent text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 py-2 pl-8 pr-3 focus:outline-none w-32" %>
                   </div>
@@ -172,11 +170,9 @@
                       </svg>
                     </div>
                     <%= f.text_field :date_to,
+                          id: "ai_scores_date_to",
                           value: params[:date_to],
                           placeholder: "To",
-                          "datepicker" => "",
-                          "datepicker-autohide" => "",
-                          "datepicker-format" => "yyyy-mm-dd",
                           autocomplete: "off",
                           class: "text-sm bg-transparent text-gray-700 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-600 py-2 pl-8 pr-3 focus:outline-none w-32" %>
                   </div>
@@ -324,3 +320,16 @@
     </div>
   </div>
 </div>
+
+<script src="https://unpkg.com/flowbite@1.5.3/dist/datepicker.js"></script>
+<script>
+  function initAiScoresDatepickers() {
+    if (typeof Datepicker === 'undefined') return;
+    var fromEl = document.getElementById('ai_scores_date_from');
+    var toEl   = document.getElementById('ai_scores_date_to');
+    if (fromEl && !fromEl._dp) fromEl._dp = new Datepicker(fromEl, { format: 'yyyy-mm-dd', autohide: true });
+    if (toEl   && !toEl._dp)   toEl._dp   = new Datepicker(toEl,   { format: 'yyyy-mm-dd', autohide: true });
+  }
+  document.addEventListener('DOMContentLoaded', initAiScoresDatepickers);
+  document.addEventListener('turbo:load', initAiScoresDatepickers);
+</script>
