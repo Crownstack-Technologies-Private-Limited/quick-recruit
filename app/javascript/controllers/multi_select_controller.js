@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["dropdown", "label", "checkbox"]
+  static targets = ["dropdown", "label", "checkbox", "button"]
 
   connect() {
     this.updateLabel()
@@ -33,11 +33,13 @@ export default class extends Controller {
 
   _open() {
     this.dropdownTarget.classList.remove("hidden")
+    if (this.hasButtonTarget) this.buttonTarget.setAttribute("aria-expanded", "true")
     document.addEventListener("click", this._outsideClick)
   }
 
   _close() {
     this.dropdownTarget.classList.add("hidden")
+    if (this.hasButtonTarget) this.buttonTarget.setAttribute("aria-expanded", "false")
     document.removeEventListener("click", this._outsideClick)
   }
 
