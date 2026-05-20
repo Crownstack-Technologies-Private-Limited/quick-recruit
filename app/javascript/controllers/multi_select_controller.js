@@ -6,6 +6,7 @@ export default class extends Controller {
   connect() {
     this.updateLabel()
     this._outsideClick = this._handleOutsideClick.bind(this)
+    if (this.hasButtonTarget) this.buttonTarget.setAttribute("aria-expanded", "false")
   }
 
   disconnect() {
