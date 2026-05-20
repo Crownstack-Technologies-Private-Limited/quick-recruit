@@ -27,8 +27,20 @@ class Opening::AiScoresController < Opening::BaseController
                     .where(candidates: { bucket: AiScoringJob::SCOREABLE_BUCKETS })
                     .preload(:candidate)
 
-    if params[:location].present?
-      scope = scope.where("candidates.location ILIKE ?", "%#{params[:location].strip}%")
+    locations = Array(params[:locations]).map(&:strip).reject(&:blank?)
+    if locations.any?
+      conditions = locations.map { "candidates.location ILIKE ?" }.join(" OR ")
+      scope = scope.where(conditions, *locations.map { |l| "%#{l}%" })
+    end
+
+    if params[:date_from].present?
+      from_date = Date.parse(params[:date_from]) rescue nil
+      scope = scope.where("candidates.created_at >= ?", from_date.beginning_of_day) if from_date
+    end
+
+    if params[:date_to].present?
+      to_date = Date.parse(params[:date_to]) rescue nil
+      scope = scope.where("candidates.created_at <= ?", to_date.end_of_day) if to_date
     end
 
     if params[:query].present?
