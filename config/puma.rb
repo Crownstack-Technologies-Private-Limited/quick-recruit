@@ -28,7 +28,12 @@ port ENV.fetch("PORT", 3000)
 
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
-plugin :solid_queue
+# SolidQueue runs embedded inside Puma in production (single-server deployment).
+# In development the embedded supervisor is fragile — its workers get orphaned after the
+# laptop sleeps (stale heartbeat → pruned) and recovery needs a full restart. So Procfile.dev
+# starts Puma with DISABLE_SOLID_QUEUE_IN_PUMA=true and runs `queue: bin/rails solid_queue:start`
+# as a separate process instead. Exactly one supervisor runs per environment — never both.
+plugin :solid_queue unless ENV["DISABLE_SOLID_QUEUE_IN_PUMA"]
 
 # Only use a pidfile when requested
 pidfile ENV["PIDFILE"] if ENV["PIDFILE"]

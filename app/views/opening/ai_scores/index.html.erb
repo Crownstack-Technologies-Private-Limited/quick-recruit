@@ -17,11 +17,13 @@
 
         <!-- In-progress banner -->
         <% if in_progress %>
-          <% total     = @latest_log.total_candidates.to_i %>
-          <% scored    = @latest_log.successfully_scored.to_i %>
-          <% failed    = @latest_log.failed_count.to_i %>
-          <% processed = scored + failed %>
-          <% pct       = total > 0 ? (processed * 100.0 / total).round : 0 %>
+          <% total            = @latest_log.total_candidates.to_i %>
+          <% scored           = @latest_log.successfully_scored.to_i %>
+          <% failed           = @latest_log.failed_count.to_i %>
+          <% extraction_failed = @latest_log.extraction_failed_count.to_i %>
+          <% provider_failed   = @latest_log.provider_failed_count.to_i %>
+          <% processed        = scored + failed %>
+          <% pct              = total > 0 ? (processed * 100.0 / total).round : 0 %>
 
           <div class="mb-5 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800 p-4">
             <div class="flex items-center justify-between mb-3">
@@ -53,9 +55,14 @@
               </div>
             </div>
             <% if failed > 0 %>
-              <p class="mt-2.5 text-xs text-yellow-700 dark:text-yellow-400">
-                <%= failed %> candidate(s) skipped — PDF missing, corrupted, or too short to read.
-              </p>
+              <div class="mt-2.5 text-xs text-yellow-700 dark:text-yellow-400 space-y-0.5">
+                <% if extraction_failed > 0 %>
+                  <p><%= extraction_failed %> candidate(s) skipped — resume PDF missing, corrupted, or too short to read.</p>
+                <% end %>
+                <% if provider_failed > 0 %>
+                  <p><%= provider_failed %> candidate(s) not scored — AI provider error (check OpenAI API quota &amp; billing).</p>
+                <% end %>
+              </div>
             <% end %>
           </div>
 
@@ -71,6 +78,23 @@
               <div class="mt-3">
                 <%= button_to "Try Again", opening_ai_scores_path(@opening), method: :post, class: "btn-primary text-xs" %>
               </div>
+            </div>
+          </div>
+
+        <!-- Completed-with-skips banner -->
+        <% elsif @latest_log&.status == 'completed' && @latest_log.failed_count.to_i > 0 %>
+          <div class="mb-5 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-950 dark:border-yellow-800 p-4 flex items-start gap-3">
+            <span class="text-yellow-500 text-base mt-0.5">⚠</span>
+            <div class="flex-1 text-xs text-yellow-700 dark:text-yellow-400 space-y-0.5">
+              <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+                Last run finished with <%= @latest_log.failed_count %> unscored candidate(s)
+              </p>
+              <% if @latest_log.extraction_failed_count.to_i > 0 %>
+                <p><%= @latest_log.extraction_failed_count %> skipped — resume PDF missing, corrupted, or too short to read.</p>
+              <% end %>
+              <% if @latest_log.provider_failed_count.to_i > 0 %>
+                <p><%= @latest_log.provider_failed_count %> not scored — AI provider error (check OpenAI API quota &amp; billing).</p>
+              <% end %>
             </div>
           </div>
         <% end %>

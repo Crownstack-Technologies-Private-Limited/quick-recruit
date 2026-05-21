@@ -9,6 +9,7 @@ class ChatgptProvider < BaseAiProvider
   MAX_OUTPUT_TOKENS     = 600
   MAX_EXTRACTION_TOKENS = 400
   TEMPERATURE           = 0.2
+  READ_TIMEOUT          = 30  # seconds — prevents hung API calls from stalling the worker
 
   EXTRACTION_SYSTEM_PROMPT = <<~SYS.freeze
     You are an expert technical recruiter. Extract and classify job requirements
@@ -66,7 +67,7 @@ class ChatgptProvider < BaseAiProvider
   private
 
   def client
-    @client ||= OpenAI::Client.new(access_token: @api_key)
+    @client ||= OpenAI::Client.new(access_token: @api_key, request_timeout: READ_TIMEOUT)
   end
 
   def api_key_from_env

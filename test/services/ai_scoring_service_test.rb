@@ -242,12 +242,12 @@ class AiScoringServiceTest < ActiveSupport::TestCase
     assert log.total_cost > 0
   end
 
-  # Log failure count incremented on provider error
+  # Provider error increments failed_count and provider_failed_count
   def test_score_log_accumulation_failure
     attach_resume(@candidate)
     mock_extraction(@candidate, usable: true)
     log = ai_scoring_logs(:mobile_opening_log)
-    log.update!(failed_count: 0)
+    log.update!(failed_count: 0, extraction_failed_count: 0, provider_failed_count: 0)
 
     error = BaseAiProvider::ScoringError.new('API error')
     @provider.next_error = error
@@ -259,6 +259,26 @@ class AiScoringServiceTest < ActiveSupport::TestCase
 
     log.reload
     assert_equal 1, log.failed_count
+    assert_equal 1, log.provider_failed_count
+    assert_equal 0, log.extraction_failed_count
+  end
+
+  # Unreadable resume increments failed_count and extraction_failed_count
+  def test_score_log_accumulation_extraction_failure
+    attach_resume(@candidate)
+    mock_extraction(@candidate, usable: false, reason: 'extracted_text_too_short')
+    log = ai_scoring_logs(:mobile_opening_log)
+    log.update!(failed_count: 0, extraction_failed_count: 0, provider_failed_count: 0)
+
+    service_with_log = AiScoringService.new(provider: @provider, log: log)
+    result = service_with_log.score(candidate: @candidate, opening: @opening)
+
+    assert_equal :failed, result.status
+
+    log.reload
+    assert_equal 1, log.failed_count
+    assert_equal 1, log.extraction_failed_count
+    assert_equal 0, log.provider_failed_count
   end
 
   # Transaction integrity: verify that both old-score invalidation and new-score creation happen together

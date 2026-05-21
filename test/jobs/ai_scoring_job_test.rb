@@ -22,6 +22,10 @@ class AiScoringJobTest < ActiveJob::TestCase
       @next_response
     end
 
+    def extract_requirements(prompt:)
+      { must_have: [], good_to_have: [], tokens: { input: 0, output: 0 } }
+    end
+
     def estimate_cost(input_tokens:, output_tokens:)
       (input_tokens + output_tokens) * 0.000001
     end

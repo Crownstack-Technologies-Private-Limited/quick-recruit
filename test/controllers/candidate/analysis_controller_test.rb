@@ -26,6 +26,13 @@ class Candidate::AnalysisControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index returns 200 for an interviewer" do
+    login_user(users(:interviewer))
+    get candidate_analysis_path(@candidate)
+    # All authenticated roles can view candidate read pages (matches CandidatesController#show)
+    assert_response :success
+  end
+
   private
 
   def login_user(user)

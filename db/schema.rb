@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_20_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_21_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -91,10 +91,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_20_100000) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.text "error_details"
+    t.integer "extraction_failed_count", default: 0, null: false
     t.integer "failed_count", default: 0, null: false
     t.string "model", null: false
     t.bigint "opening_id", null: false
     t.string "provider", null: false
+    t.integer "provider_failed_count", default: 0, null: false
     t.bigint "requested_by_id", null: false
     t.datetime "started_at"
     t.string "status", default: "pending", null: false

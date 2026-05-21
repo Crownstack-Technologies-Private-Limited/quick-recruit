@@ -190,4 +190,89 @@ class PromptBuilderTest < ActiveSupport::TestCase
     )
     assert_includes prompt, 'overqualified'
   end
+
+  # ---------------------------------------------------------------------------
+  # build_extraction_prompt — new behaviour tests (RED → GREEN cycle)
+  # ---------------------------------------------------------------------------
+
+  test 'build_extraction_prompt includes JD delimiters' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, '<<<JOB_DESC_BEGIN>>>'
+    assert_includes prompt, '<<<JOB_DESC_END>>>'
+  end
+
+  test 'build_extraction_prompt includes opening title and location' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, @opening.title
+    assert_includes prompt, @opening.location
+  end
+
+  test 'build_extraction_prompt includes experience range when both min and max are set' do
+    @opening.min_experience = 3
+    @opening.max_experience = 7
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, '3–7 years'
+  end
+
+  test 'build_extraction_prompt includes at-least phrasing when only min_experience is set' do
+    @opening.min_experience = 4
+    @opening.max_experience = nil
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, 'at least 4 years'
+  end
+
+  test 'build_extraction_prompt includes up-to phrasing when only max_experience is set' do
+    @opening.min_experience = nil
+    @opening.max_experience = 6
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, 'up to 6 years'
+  end
+
+  test 'build_extraction_prompt omits experience context when no experience range is set' do
+    @opening.min_experience = nil
+    @opening.max_experience = nil
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_not_includes prompt, 'Experience range'
+  end
+
+  test 'build_extraction_prompt has a default must_have rule when classification is unclear' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, 'DEFAULT'
+    assert_includes prompt, 'must_have'
+  end
+
+  test 'build_extraction_prompt instructs never to default to good_to_have' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, 'never default to good_to_have'
+  end
+
+  test 'build_extraction_prompt classifies experience range mentions as must_have' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    # Rule 3 — experience ranges in JD text → must_have
+    assert_match(/must_have.*experience range|experience range.*must_have/im, prompt)
+  end
+
+  test 'build_extraction_prompt classifies skills without softeners as must_have' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    # Rule 4 — skills without softener words → must_have
+    assert_match(/must_have.*softener|softener.*must_have/im, prompt)
+  end
+
+  test 'build_extraction_prompt lists softener words that signal good_to_have' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, 'preferred'
+    assert_includes prompt, 'nice to have'
+    assert_includes prompt, 'a plus'
+  end
+
+  test 'build_extraction_prompt caps items at 15 per category' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_includes prompt, '15'
+  end
+
+  test 'build_extraction_prompt returns a string' do
+    prompt = PromptBuilder.build_extraction_prompt(@opening)
+    assert_kind_of String, prompt
+    assert prompt.length > 100
+  end
 end
