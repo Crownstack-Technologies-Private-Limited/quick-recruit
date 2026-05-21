@@ -110,7 +110,8 @@
         <!-- Filters -->
         <% any_filter = params[:query].present? || Array(params[:locations]).any?(&:present?) || params[:min_ctc].present? || params[:max_ctc].present? || params[:date_from].present? || params[:date_to].present? %>
         <div class="mb-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-4">
-          <%= form_with url: opening_ai_scores_path(@opening), method: :get, local: true do |f| %>
+          <%= form_with url: opening_ai_scores_path(@opening), method: :get, local: true,
+                data: { controller: "ai-score-filter", action: "submit->ai-score-filter#clean" } do |f| %>
             <div class="flex flex-wrap gap-4 items-end">
               <div class="flex flex-col gap-1 flex-1 min-w-48">
                 <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Search</label>
@@ -169,7 +170,7 @@
                       onwheel: "this.blur()" %>
               </div>
               <div class="flex items-center gap-2">
-                <%= f.submit "Apply Filters", class: "text-sm cursor-pointer btn-primary" %>
+                <button type="submit" class="text-sm cursor-pointer btn-primary">Apply Filters</button>
                 <% if any_filter %>
                   <%= link_to "Clear", opening_ai_scores_path(@opening),
                         class: "text-sm px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" %>

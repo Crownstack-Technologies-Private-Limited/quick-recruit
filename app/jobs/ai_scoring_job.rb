@@ -45,32 +45,34 @@ class AiScoringJob < ApplicationJob
   private
 
   def process_batch(log, provider_instance = nil)
-    opening   = Opening.find(log.opening_id)
-    provider  = provider_instance || provider_for(log.provider)
+    opening  = Opening.find(log.opening_id)
+    provider = provider_instance || provider_for(log.provider)
 
     JdExtractionService.ensure_extracted(opening: opening, provider: provider)
 
-    service    = AiScoringService.new(provider: provider, log: log)
-    candidates = candidates_for(opening)
-    log.update!(total_candidates: candidates.size)
+    service = AiScoringService.new(provider: provider, log: log)
+    scope   = candidates_scope(opening)
+    log.update!(total_candidates: scope.count)
 
-    candidates.each_slice(CHUNK_SIZE) do |chunk|
-      chunk.each do |c|
-        service.score(candidate: c, opening: opening)
-      end
+    scope.find_in_batches(batch_size: CHUNK_SIZE) do |batch|
+      batch.each { |c| service.score(candidate: c, opening: opening) }
+      ActiveRecord::Base.connection.clear_query_cache
+      GC.compact
     end
 
     log.update!(status: 'completed', completed_at: Time.current)
+  ensure
+    ActiveRecord::Base.connection.clear_query_cache
+    GC.compact
   end
 
-  def candidates_for(opening)
+  def candidates_scope(opening)
     Candidate
       .where(opening_id: opening.id)
       .where(bucket: SCOREABLE_BUCKETS)
       .joins(:resume_attachment)
       .includes(resume_attachment: :blob)
       .order(:id)
-      .to_a
   end
 
   def provider_for(key)

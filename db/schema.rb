@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_16_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_20_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -79,7 +79,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_110000) do
     t.index ["candidate_id", "is_valid"], name: "index_ai_scores_on_candidate_id_and_is_valid"
     t.index ["candidate_id", "opening_id", "is_valid"], name: "index_ai_scores_one_valid_per_pair", unique: true, where: "(is_valid = true)"
     t.index ["candidate_id"], name: "index_ai_scores_on_candidate_id"
-    t.index ["opening_id", "score"], name: "index_ai_scores_on_opening_and_score"
+    t.index ["opening_id", "score"], name: "index_ai_scores_on_opening_score_valid", order: { score: :desc }, where: "(is_valid = true)"
     t.index ["opening_id"], name: "index_ai_scores_on_opening_id"
     t.index ["processed_at"], name: "index_ai_scores_on_processed_at"
     t.index ["provider"], name: "index_ai_scores_on_provider"
@@ -163,6 +163,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_110000) do
     t.string "website"
     t.string "zoho_id"
     t.string "zoho_job_id"
+    t.index ["bucket"], name: "index_candidates_on_bucket"
     t.index ["email"], name: "unique_emails", unique: true
     t.index ["opening_id"], name: "index_candidates_on_opening_id"
     t.index ["owner_id"], name: "index_candidates_on_owner_id"

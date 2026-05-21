@@ -25,7 +25,6 @@ class Opening::AiScoresController < Opening::BaseController
     scope = @opening.ai_scores.valid_scores.sorted_by_score
                     .joins(:candidate)
                     .where(candidates: { bucket: AiScoringJob::SCOREABLE_BUCKETS })
-                    .preload(:candidate)
 
     locations = Array(params[:locations]).map(&:strip).reject(&:blank?)
     if locations.any?
@@ -51,20 +50,23 @@ class Opening::AiScoresController < Opening::BaseController
       )
     end
 
-    @ai_scores = scope.to_a
+    page = [params[:page].to_i, 1].max
 
+    # CTC is a free-text string column so it can't be filtered in SQL —
+    # load all records only when that filter is active, then paginate in Ruby.
     if params[:min_ctc].present? || params[:max_ctc].present?
       min_ctc = params[:min_ctc].presence&.to_f
       max_ctc = params[:max_ctc].presence&.to_f
-      @ai_scores = @ai_scores.select do |s|
+      all_scores = scope.preload(:candidate).to_a.select do |s|
         ctc = s.candidate.expected_ctc.to_s.gsub(/[^0-9.]/, "").to_f
         (min_ctc.nil? || ctc >= min_ctc) && (max_ctc.nil? || ctc <= max_ctc)
       end
+      @pagy    = Pagy.new(count: all_scores.length, page: page, limit: 25)
+      @ai_scores = all_scores.slice(@pagy.offset, @pagy.limit) || []
+    else
+      @pagy    = Pagy.new(count: scope.count, page: page, limit: 25)
+      @ai_scores = scope.offset(@pagy.offset).limit(@pagy.limit).preload(:candidate).to_a
     end
-
-    page = [params[:page].to_i, 1].max
-    @pagy = Pagy.new(count: @ai_scores.length, page: page, limit: 25)
-    @ai_scores = @ai_scores.slice(@pagy.offset, @pagy.limit) || []
 
     @latest_log = @opening.ai_scoring_logs.recent.first
     @cost_estimate_usd = estimate_cost_for_opening
