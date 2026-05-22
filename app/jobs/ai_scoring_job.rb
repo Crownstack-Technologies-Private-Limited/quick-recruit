@@ -29,7 +29,7 @@ class AiScoringJob < ApplicationJob
       quoted_key = AiScoringLog.connection.quote("ai_scoring:opening:#{opening_id.to_i}")
       AiScoringLog.connection.execute("SELECT pg_advisory_xact_lock(hashtext(#{quoted_key}))")
       log.reload
-      next if %w[processing completed failed].include?(log.status)
+      next if %w[processing completed failed paused cancelled].include?(log.status)
       log.update!(status: 'processing', started_at: Time.current)
       should_process = true
     end
@@ -55,12 +55,13 @@ class AiScoringJob < ApplicationJob
     log.update!(total_candidates: scope.count)
 
     scope.find_in_batches(batch_size: CHUNK_SIZE) do |batch|
+      break if log.reload.status.in?(%w[paused cancelled])
       batch.each { |c| service.score(candidate: c, opening: opening) }
       ActiveRecord::Base.connection.clear_query_cache
       GC.compact
     end
 
-    log.update!(status: 'completed', completed_at: Time.current)
+    log.update!(status: 'completed', completed_at: Time.current) unless log.reload.status.in?(%w[paused cancelled])
   ensure
     ActiveRecord::Base.connection.clear_query_cache
     GC.compact

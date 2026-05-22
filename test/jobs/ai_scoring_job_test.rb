@@ -284,6 +284,67 @@ class AiScoringJobTest < ActiveJob::TestCase
     assert log.completed_at.present?
   end
 
+  # Test: job skips entirely when the log for this batch_id is already 'paused'
+  def test_job_skips_when_log_already_paused
+    create_candidates_with_resumes(2)
+
+    # Pre-create the log as 'paused' — simulates a previously-paused run with the same batch_id
+    AiScoringLog.create!(
+      batch_id:        @batch_id,
+      opening_id:      @opening.id,
+      requested_by_id: @user.id,
+      status:          'paused',
+      provider:        'chatgpt',
+      model:           'fake-1'
+    )
+
+    AiScoringJob.perform_now(
+      opening_id:      @opening.id,
+      batch_id:        @batch_id,
+      requested_by_id: @user.id,
+      provider:        @fake_provider
+    )
+
+    assert_equal 0, @fake_provider.calls, "Provider should not be called when log is already paused"
+    assert_equal 'paused', AiScoringLog.find_by(batch_id: @batch_id).status, "Log status must remain paused"
+  end
+
+  # Test: job stops at next batch boundary when log is set to 'paused' during processing
+  def test_job_stops_at_next_batch_boundary_when_paused_mid_run
+    # Temporarily reduce CHUNK_SIZE to 1 so each candidate gets its own batch
+    original_chunk = AiScoringJob::CHUNK_SIZE
+    AiScoringJob.send(:remove_const, :CHUNK_SIZE)
+    AiScoringJob.const_set(:CHUNK_SIZE, 1)
+
+    create_candidates_with_resumes(2)
+    target_batch_id = @batch_id
+
+    # After the first candidate is scored (end of batch 1), set the log to 'paused'
+    scored_count = 0
+    orig_score   = AiScoringService.instance_method(:score)
+    AiScoringService.define_method(:score) do |candidate:, opening:|
+      scored_count += 1
+      result = orig_score.bind(self).call(candidate: candidate, opening: opening)
+      AiScoringLog.where(batch_id: target_batch_id).update_all(status: 'paused') if scored_count == 1
+      result
+    end
+
+    AiScoringJob.perform_now(
+      opening_id:      @opening.id,
+      batch_id:        @batch_id,
+      requested_by_id: @user.id,
+      provider:        @fake_provider
+    )
+
+    assert_equal 1, @fake_provider.calls, "Only the first batch (1 candidate) should be scored"
+    assert_equal 'paused', AiScoringLog.find_by(batch_id: @batch_id).status, "Log should remain paused"
+    assert_equal 1, AiScore.where(opening_id: @opening.id).count, "Only 1 score should have been created"
+  ensure
+    AiScoringJob.send(:remove_const, :CHUNK_SIZE)
+    AiScoringJob.const_set(:CHUNK_SIZE, original_chunk)
+    AiScoringService.define_method(:score, orig_score) if orig_score
+  end
+
   # Helper methods
   private
 
