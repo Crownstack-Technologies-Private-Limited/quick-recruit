@@ -103,6 +103,23 @@ class Opening::AiScoresController < Opening::BaseController
       notice: 'AI scoring started. Refresh in a moment to see results.'
   end
 
+  # PATCH /openings/:opening_id/ai_scores/pause
+  def pause
+    authorize @opening, :create?
+
+    in_flight_log = @opening.ai_scoring_logs.find_by(status: %w[pending processing])
+
+    unless in_flight_log
+      redirect_to opening_ai_scores_path(@opening), alert: 'No scoring run is currently in progress.'
+      return
+    end
+
+    in_flight_log.update!(status: 'paused')
+    discard_queued_ai_scoring_jobs(@opening.id)
+
+    redirect_to opening_ai_scores_path(@opening), notice: 'Scoring paused. Resume when ready.'
+  end
+
   private
 
   # Defensive: only accept well-formed UUIDs to avoid weird DB content.
@@ -118,5 +135,17 @@ class Opening::AiScoresController < Opening::BaseController
       input_tokens:  candidate_count * AVG_INPUT_TOKENS_PER_CANDIDATE,
       output_tokens: candidate_count * AVG_OUTPUT_TOKENS_PER_CANDIDATE
     )
+  end
+
+  # Destroys SolidQueue jobs for AiScoringJob that are queued for this opening
+  # but have not yet been claimed by a worker. Running jobs (claimed executions)
+  # are handled by the DB-flag mechanism (they exit at the next batch boundary).
+  # Note: arguments is stored as a text column — cast to jsonb for JSON path querying.
+  def discard_queued_ai_scoring_jobs(opening_id)
+    SolidQueue::Job
+      .where(class_name: 'AiScoringJob', finished_at: nil)
+      .where("(arguments::jsonb) -> 'arguments' -> 0 ->> 'opening_id' = ?", opening_id.to_s)
+      .joins(:ready_execution)
+      .destroy_all
   end
 end

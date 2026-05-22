@@ -247,4 +247,52 @@ class Opening::AiScoresControllerTest < ActionDispatch::IntegrationTest
     get opening_ai_scores_path(@opening), params: { date_from: "not-a-date", date_to: "also-bad" }
     assert_response :success
   end
+
+  # --- pause action ---
+
+  test "pause sets in-flight log to paused and redirects with notice" do
+    login_user(@admin)
+
+    log = @opening.ai_scoring_logs.create!(
+      batch_id:        SecureRandom.uuid,
+      requested_by_id: @admin.id,
+      status:          'processing',
+      provider:        'chatgpt',
+      model:           'gpt-4o-mini'
+    )
+
+    patch pause_opening_ai_scores_path(@opening)
+
+    assert_redirected_to opening_ai_scores_path(@opening)
+    assert_match /paused/i, flash[:notice]
+    assert_equal 'paused', log.reload.status
+  end
+
+  test "pause redirects with alert when no in-flight log exists" do
+    login_user(@admin)
+
+    # Ensure no pending/processing logs exist for this opening
+    @opening.ai_scoring_logs.where(status: %w[pending processing]).delete_all
+
+    patch pause_opening_ai_scores_path(@opening)
+
+    assert_redirected_to opening_ai_scores_path(@opening)
+    assert_match /No scoring run/i, flash[:alert]
+  end
+
+  test "pause is forbidden for non-admin users" do
+    login_user(@user)
+
+    @opening.ai_scoring_logs.create!(
+      batch_id:        SecureRandom.uuid,
+      requested_by_id: @admin.id,
+      status:          'processing',
+      provider:        'chatgpt',
+      model:           'gpt-4o-mini'
+    )
+
+    patch pause_opening_ai_scores_path(@opening)
+
+    assert_redirected_to root_path
+  end
 end
