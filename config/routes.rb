@@ -43,6 +43,7 @@ Rails.application.routes.draw do
       resources :campaigns
       resources :resume
       get "timeline", to: "timeline#index"
+      get "analysis", to: "analysis#index"
       patch "/update/bucket", to: "candidate#update_bucket", as: "update_bucket"
       patch "/update/status", to: "candidate#update_status", as: "update_status"
       patch "/update/campaign", to: "candidate#update_campaign", as: "update_campaign"
@@ -84,7 +85,12 @@ Rails.application.routes.draw do
       resources :champions
       resources :note
       resources :description
-      resources :ai_scores, only: [:index, :show, :create]
+      resources :ai_scores, only: [:index, :create] do
+        collection do
+          patch :pause
+          delete :destroy, path: ''
+        end
+      end
       get "timeline", to: "timeline#index"
     end
   end

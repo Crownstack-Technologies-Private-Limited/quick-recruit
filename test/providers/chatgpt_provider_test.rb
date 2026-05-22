@@ -171,7 +171,46 @@ class ChatgptProviderTest < ActiveSupport::TestCase
     assert_equal({}, result[:gaps])
   end
 
+  # ---------------------------------------------------------------------------
+  # Timeout tests
+  # ---------------------------------------------------------------------------
+
+  test 'READ_TIMEOUT constant is defined and is between 20 and 60 seconds' do
+    assert defined?(ChatgptProvider::READ_TIMEOUT),
+           'READ_TIMEOUT constant must be defined'
+    assert_includes 20..60, ChatgptProvider::READ_TIMEOUT,
+                    "READ_TIMEOUT should be 20–60 s, got #{ChatgptProvider::READ_TIMEOUT}"
+  end
+
+  test 'score wraps Net::ReadTimeout as ScoringError' do
+    timeout_client = build_timeout_client
+    @provider.instance_variable_set(:@client, timeout_client)
+
+    err = assert_raises(BaseAiProvider::ScoringError) do
+      @provider.score(prompt: 'test prompt')
+    end
+    assert_match(/timeout/i, err.message)
+  end
+
+  test 'extract_requirements wraps Net::ReadTimeout as ScoringError' do
+    timeout_client = build_timeout_client
+    @provider.instance_variable_set(:@client, timeout_client)
+
+    err = assert_raises(BaseAiProvider::ScoringError) do
+      @provider.extract_requirements(prompt: 'test prompt')
+    end
+    assert_match(/timeout/i, err.message)
+  end
+
   private
+
+  def build_timeout_client
+    Class.new do
+      def chat(parameters:)
+        raise Net::ReadTimeout, 'execution expired'
+      end
+    end.new
+  end
 
   def build_mock_client(response)
     Class.new do
