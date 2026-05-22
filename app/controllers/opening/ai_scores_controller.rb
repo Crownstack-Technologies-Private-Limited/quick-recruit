@@ -107,7 +107,7 @@ class Opening::AiScoresController < Opening::BaseController
   def pause
     authorize @opening, :create?
 
-    in_flight_log = @opening.ai_scoring_logs.find_by(status: %w[pending processing])
+    in_flight_log = @opening.ai_scoring_logs.where(status: %w[pending processing]).first
 
     unless in_flight_log
       redirect_to opening_ai_scores_path(@opening), alert: 'No scoring run is currently in progress.'
