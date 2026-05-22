@@ -14,12 +14,16 @@ class AiScoringJobTest < ActiveJob::TestCase
       @should_raise_on_call = nil
     end
 
-    def score(prompt:)
+    def score(prompt:, metadata: {})
       @calls += 1
       if @should_raise_on_call && @calls == @should_raise_on_call
         raise BaseAiProvider::ScoringError.new('Mock API error')
       end
       @next_response
+    end
+
+    def extract_requirements(prompt:, metadata: {})
+      { must_have: [], good_to_have: [], tokens: { input: 0, output: 0 } }
     end
 
     def estimate_cost(input_tokens:, output_tokens:)
@@ -260,7 +264,7 @@ class AiScoringJobTest < ActiveJob::TestCase
     candidates = create_candidates_with_resumes(1)
 
     # Override provider to raise a non-ScoringError
-    @fake_provider.define_singleton_method(:score) do |prompt:|
+    @fake_provider.define_singleton_method(:score) do |prompt:, metadata: {}|
       raise StandardError.new('Database connection lost')
     end
 
@@ -278,6 +282,133 @@ class AiScoringJobTest < ActiveJob::TestCase
     assert_equal 'failed', log.status
     assert_includes log.error_details, 'Database connection lost'
     assert log.completed_at.present?
+  end
+
+  # Test: job skips entirely when the log for this batch_id is already 'paused'
+  def test_job_skips_when_log_already_paused
+    create_candidates_with_resumes(2)
+
+    # Pre-create the log as 'paused' — simulates a previously-paused run with the same batch_id
+    AiScoringLog.create!(
+      batch_id:        @batch_id,
+      opening_id:      @opening.id,
+      requested_by_id: @user.id,
+      status:          'paused',
+      provider:        'chatgpt',
+      model:           'fake-1'
+    )
+
+    AiScoringJob.perform_now(
+      opening_id:      @opening.id,
+      batch_id:        @batch_id,
+      requested_by_id: @user.id,
+      provider:        @fake_provider
+    )
+
+    assert_equal 0, @fake_provider.calls, "Provider should not be called when log is already paused"
+    assert_equal 'paused', AiScoringLog.find_by(batch_id: @batch_id).status, "Log status must remain paused"
+  end
+
+  # Test: job skips entirely when the log for this batch_id is already 'cancelled'
+  def test_job_skips_when_log_already_cancelled
+    create_candidates_with_resumes(2)
+
+    AiScoringLog.create!(
+      batch_id:        @batch_id,
+      opening_id:      @opening.id,
+      requested_by_id: @user.id,
+      status:          'cancelled',
+      provider:        'chatgpt',
+      model:           'fake-1'
+    )
+
+    AiScoringJob.perform_now(
+      opening_id:      @opening.id,
+      batch_id:        @batch_id,
+      requested_by_id: @user.id,
+      provider:        @fake_provider
+    )
+
+    assert_equal 0, @fake_provider.calls, "Provider should not be called when log is already cancelled"
+    assert_equal 'cancelled', AiScoringLog.find_by(batch_id: @batch_id).status, "Log status must remain cancelled"
+end
+
+  # Test: job stops at next batch boundary when log is set to 'paused' during processing
+  def test_job_stops_at_next_batch_boundary_when_paused_mid_run
+    # Temporarily reduce CHUNK_SIZE to 1 so each candidate gets its own batch
+    original_chunk = AiScoringJob::CHUNK_SIZE
+    AiScoringJob.send(:remove_const, :CHUNK_SIZE)
+    AiScoringJob.const_set(:CHUNK_SIZE, 1)
+
+    create_candidates_with_resumes(2)
+    target_batch_id = @batch_id
+
+    # After the first candidate is scored (end of batch 1), set the log to 'paused'
+    scored_count = 0
+    orig_score   = AiScoringService.instance_method(:score)
+    AiScoringService.define_method(:score) do |candidate:, opening:|
+      scored_count += 1
+      result = orig_score.bind(self).call(candidate: candidate, opening: opening)
+      AiScoringLog.where(batch_id: target_batch_id).update_all(status: 'paused') if scored_count == 1
+      result
+    end
+
+    AiScoringJob.perform_now(
+      opening_id:      @opening.id,
+      batch_id:        @batch_id,
+      requested_by_id: @user.id,
+      provider:        @fake_provider
+    )
+
+    assert_equal 1, @fake_provider.calls, "Only the first batch (1 candidate) should be scored"
+    assert_equal 'paused', AiScoringLog.find_by(batch_id: @batch_id).status, "Log should remain paused"
+    assert_equal 1, AiScore.where(opening_id: @opening.id).count, "Only 1 score should have been created"
+    assert_nil AiScoringLog.find_by(batch_id: @batch_id).completed_at,
+      "completed_at must not be set when job pauses mid-run"
+  ensure
+    AiScoringJob.send(:remove_const, :CHUNK_SIZE)
+    AiScoringJob.const_set(:CHUNK_SIZE, original_chunk)
+    AiScoringService.define_method(:score, orig_score) if orig_score
+  end
+
+  # Test: pause set DURING the last batch (no second batch to trip the boundary check)
+  # This is the exact bug scenario: interrupted=false because the boundary check never fires again,
+  # so the old `unless interrupted` guard let `log.update!(status: 'completed')` overwrite 'paused'.
+  def test_job_does_not_overwrite_paused_when_pause_set_during_last_batch
+    # Use CHUNK_SIZE=1 and exactly 1 candidate so there's only one batch.
+    # Pause is set INSIDE that batch (after scoring), so the boundary check at the top of the
+    # loop never sees 'paused' — interrupted stays false. The final reload guard must catch it.
+    original_chunk = AiScoringJob::CHUNK_SIZE
+    AiScoringJob.send(:remove_const, :CHUNK_SIZE)
+    AiScoringJob.const_set(:CHUNK_SIZE, 1)
+
+    create_candidates_with_resumes(1)
+    target_batch_id = @batch_id
+
+    orig_score = AiScoringService.instance_method(:score)
+    AiScoringService.define_method(:score) do |candidate:, opening:|
+      result = orig_score.bind(self).call(candidate: candidate, opening: opening)
+      # Simulate user clicking Pause right as the last (and only) batch finishes scoring.
+      AiScoringLog.where(batch_id: target_batch_id).update_all(status: 'paused')
+      result
+    end
+
+    AiScoringJob.perform_now(
+      opening_id:      @opening.id,
+      batch_id:        @batch_id,
+      requested_by_id: @user.id,
+      provider:        @fake_provider
+    )
+
+    log = AiScoringLog.find_by(batch_id: @batch_id)
+    assert_equal 'paused', log.status,
+      "Log must stay 'paused' — job must not overwrite with 'completed' when pause is set mid-batch"
+    assert_nil log.completed_at,
+      "completed_at must not be set when the job respects a mid-batch pause"
+  ensure
+    AiScoringJob.send(:remove_const, :CHUNK_SIZE)
+    AiScoringJob.const_set(:CHUNK_SIZE, original_chunk)
+    AiScoringService.define_method(:score, orig_score) if orig_score
   end
 
   # Helper methods

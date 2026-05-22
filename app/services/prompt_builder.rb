@@ -30,13 +30,17 @@ class PromptBuilder
   end
 
   def self.build_extraction_prompt(opening)
-    <<~PROMPT
-      Extract the requirements from the job description below and classify each as
-      MUST HAVE (non-negotiable) or GOOD TO HAVE (preferred but not essential).
+    exp_line = extraction_experience_line(opening)
+    exp_context = exp_line.present? ? "#{exp_line}\n" : ""
 
+    <<~PROMPT
+      Extract and classify ALL requirements from the job description below.
+
+      Opening context (use this to infer classification when the JD is ambiguous):
+      - Title: #{opening.title}
+      - Location: #{opening.location}
+      #{exp_context}
       #{JD_DELIM_OPEN}
-      Title: #{opening.title}
-      Location: #{opening.location}
       #{jd_text_for(opening)}
       #{JD_DELIM_CLOSE}
 
@@ -46,12 +50,39 @@ class PromptBuilder
         "good_to_have": ["<requirement>", ...]
       }
 
-      Rules:
-      - must_have: skills, qualifications, or experience explicitly stated as required/mandatory
-      - good_to_have: skills listed as preferred, a plus, or beneficial
-      - Each item should be concise (3-10 words)
-      - Limit to 10 items per category
+      Classification rules — apply in this exact order, stop at the first match:
+      1. must_have — JD uses: "required", "must", "mandatory", "essential", "need", "necessary"
+      2. must_have — skill matches or is central to the job title above
+      3. must_have — an experience range is stated for the skill
+                     ("5+ years", "minimum 3 years", "at least X years of …", "X–Y years")
+      4. must_have — skill appears in the JD without any softener word
+      5. good_to_have — JD uses: "preferred", "nice to have", "a plus", "bonus",
+                        "ideally", "exposure to", "familiarity with", "beneficial"
+      6. DEFAULT — when uncertain, classify as must_have — never default to good_to_have
+
+      Format rules:
+      - Each item: 3–15 words, specific not generic
+      - Max 15 items per category
+      - No duplicates across categories
     PROMPT
+  end
+
+  # Returns a formatted experience-range line for the extraction prompt context block,
+  # or an empty string when no range is configured on the opening.
+  def self.extraction_experience_line(opening)
+    min = opening.try(:min_experience)
+    max = opening.try(:max_experience)
+    return '' unless min.present? || max.present?
+
+    range_text = if min.present? && max.present?
+      "#{min}–#{max} years"
+    elsif min.present?
+      "at least #{min} years"
+    else
+      "up to #{max} years"
+    end
+
+    "- Experience range: #{range_text}"
   end
 
   def initialize(candidate:, opening:, resume_text:)

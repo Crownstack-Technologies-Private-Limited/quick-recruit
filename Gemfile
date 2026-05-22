@@ -85,6 +85,8 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
   gem "climate_control"
+  gem "minitest", "~> 5.1"  # minitest 6.0.0 incompatible with Rails 8.1.1 LineFiltering (missing keyword arg)
+  gem "rails-controller-testing"
 end
 
 group :production do

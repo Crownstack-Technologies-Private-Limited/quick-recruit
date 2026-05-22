@@ -25,10 +25,21 @@ class Opening::AiScoresController < Opening::BaseController
     scope = @opening.ai_scores.valid_scores.sorted_by_score
                     .joins(:candidate)
                     .where(candidates: { bucket: AiScoringJob::SCOREABLE_BUCKETS })
-                    .preload(:candidate)
 
-    if params[:location].present?
-      scope = scope.where("candidates.location ILIKE ?", "%#{params[:location].strip}%")
+    locations = Array(params[:locations]).map(&:strip).reject(&:blank?)
+    if locations.any?
+      conditions = locations.map { "candidates.location ILIKE ?" }.join(" OR ")
+      scope = scope.where(conditions, *locations.map { |l| "%#{l}%" })
+    end
+
+    if params[:date_from].present?
+      from_date = Date.parse(params[:date_from]) rescue nil
+      scope = scope.where("candidates.created_at >= ?", from_date.beginning_of_day) if from_date
+    end
+
+    if params[:date_to].present?
+      to_date = Date.parse(params[:date_to]) rescue nil
+      scope = scope.where("candidates.created_at <= ?", to_date.end_of_day) if to_date
     end
 
     if params[:query].present?
@@ -39,31 +50,26 @@ class Opening::AiScoresController < Opening::BaseController
       )
     end
 
-    @ai_scores = scope.to_a
+    page = [params[:page].to_i, 1].max
 
+    # CTC is a free-text string column so it can't be filtered in SQL —
+    # load all records only when that filter is active, then paginate in Ruby.
     if params[:min_ctc].present? || params[:max_ctc].present?
       min_ctc = params[:min_ctc].presence&.to_f
       max_ctc = params[:max_ctc].presence&.to_f
-      @ai_scores = @ai_scores.select do |s|
+      all_scores = scope.preload(:candidate).to_a.select do |s|
         ctc = s.candidate.expected_ctc.to_s.gsub(/[^0-9.]/, "").to_f
         (min_ctc.nil? || ctc >= min_ctc) && (max_ctc.nil? || ctc <= max_ctc)
       end
+      @pagy    = Pagy.new(count: all_scores.length, page: page, limit: 25)
+      @ai_scores = all_scores.slice(@pagy.offset, @pagy.limit) || []
+    else
+      @pagy    = Pagy.new(count: scope.count, page: page, limit: 25)
+      @ai_scores = scope.offset(@pagy.offset).limit(@pagy.limit).preload(:candidate).to_a
     end
-
-    page = [params[:page].to_i, 1].max
-    @pagy = Pagy.new(count: @ai_scores.length, page: page, limit: 25)
-    @ai_scores = @ai_scores.slice(@pagy.offset, @pagy.limit) || []
 
     @latest_log = @opening.ai_scoring_logs.recent.first
     @cost_estimate_usd = estimate_cost_for_opening
-  end
-
-  # GET /openings/:opening_id/ai_scores/:id
-  # Detail view (used by the candidate detail modal).
-  def show
-    authorize @opening, :show?
-    @ai_score = @opening.ai_scores.includes(candidate: :user).find(params[:id])
-    @candidate = @ai_score.candidate
   end
 
   # POST /openings/:opening_id/ai_scores
@@ -97,6 +103,43 @@ class Opening::AiScoresController < Opening::BaseController
       notice: 'AI scoring started. Refresh in a moment to see results.'
   end
 
+  # PATCH /openings/:opening_id/ai_scores/pause
+  def pause
+    authorize @opening, :create?
+
+    in_flight_log = @opening.ai_scoring_logs.where(status: %w[pending processing]).first
+
+    unless in_flight_log
+      redirect_to opening_ai_scores_path(@opening), alert: 'No scoring run is currently in progress.'
+      return
+    end
+
+    in_flight_log.update!(status: 'paused')
+    discard_queued_ai_scoring_jobs(@opening.id)
+
+    redirect_to opening_ai_scores_path(@opening), notice: 'Scoring paused. Resume when ready.'
+  end
+
+  # DELETE /openings/:opening_id/ai_scores
+  def destroy
+    authorize @opening, :create?
+
+    # Signal any running job to stop at its next batch boundary before we delete
+    @opening.ai_scoring_logs.where(status: %w[pending processing]).update_all(status: 'cancelled')
+
+    # Remove queued-but-not-yet-running SolidQueue jobs for this opening
+    discard_queued_ai_scoring_jobs(@opening.id)
+
+    # Wipe all scores and all run history for this opening
+    AiScore.where(opening_id: @opening.id).delete_all
+    AiScoringLog.where(opening_id: @opening.id).delete_all
+
+    # Reset JD extraction so the next run re-extracts requirements from scratch
+    @opening.update!(must_have: [], good_to_have: [], jd_requirements_hash: nil)
+
+    redirect_to opening_ai_scores_path(@opening), notice: 'All AI scores cleared successfully.'
+  end
+
   private
 
   # Defensive: only accept well-formed UUIDs to avoid weird DB content.
@@ -112,5 +155,17 @@ class Opening::AiScoresController < Opening::BaseController
       input_tokens:  candidate_count * AVG_INPUT_TOKENS_PER_CANDIDATE,
       output_tokens: candidate_count * AVG_OUTPUT_TOKENS_PER_CANDIDATE
     )
+  end
+
+  # Destroys SolidQueue jobs for AiScoringJob that are queued for this opening
+  # but have not yet been claimed by a worker. Running jobs (claimed executions)
+  # are handled by the DB-flag mechanism (they exit at the next batch boundary).
+  # Note: arguments is stored as a text column — cast to jsonb for JSON path querying.
+  def discard_queued_ai_scoring_jobs(opening_id)
+    SolidQueue::Job
+      .where(class_name: 'AiScoringJob', finished_at: nil)
+      .where("(arguments::jsonb) -> 'arguments' -> 0 ->> 'opening_id' = ?", opening_id.to_s)
+      .joins(:ready_execution)
+      .destroy_all
   end
 end

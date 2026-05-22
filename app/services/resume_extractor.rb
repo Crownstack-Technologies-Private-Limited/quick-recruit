@@ -1,7 +1,8 @@
 require 'open-uri'
 
 class ResumeExtractor
-  MIN_USABLE_LENGTH = 200  # chars; below this, treat as extraction failure
+  MIN_USABLE_LENGTH = 200   # chars; below this, treat as extraction failure
+  MAX_USABLE_LENGTH = 15_000 # chars; truncate beyond this to cap RAM + token usage
 
   Result = Struct.new(:text, :usable, :reason, keyword_init: true) do
     def usable? = usable
@@ -22,7 +23,7 @@ class ResumeExtractor
     if text.length < MIN_USABLE_LENGTH
       Result.new(text: text, usable: false, reason: 'extracted_text_too_short')
     else
-      Result.new(text: text, usable: true, reason: nil)
+      Result.new(text: text.slice(0, MAX_USABLE_LENGTH), usable: true, reason: nil)
     end
   rescue PDF::Reader::MalformedPDFError, PDF::Reader::UnsupportedFeatureError => e
     Result.new(text: '', usable: false, reason: "pdf_error:#{e.class.name.demodulize}")

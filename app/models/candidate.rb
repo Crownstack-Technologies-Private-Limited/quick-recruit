@@ -70,7 +70,10 @@ class Candidate < ApplicationRecord
     current_checksum = resume.attached? ? resume.blob.checksum : nil
     return if current_checksum == resume_hash
 
-    invalidate_ai_scores!('resume_updated') if resume_hash.present?
+    # Only invalidate when the resume was REPLACED with different content.
+    # Detaching/purging the resume (current_checksum = nil) does NOT constitute
+    # a replacement, so existing scores remain valid in that case.
+    invalidate_ai_scores!('resume_updated') if resume_hash.present? && current_checksum.present?
 
     update_column(:resume_hash, current_checksum)
   end

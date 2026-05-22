@@ -20,8 +20,11 @@
         <li class="block border-b border-gray-200 dark:border-gray-700 lg:inline lg:border-b-0">
           <a href="<%= candidate_reviews_path(@candidate) %>" class="<%= current_page?(candidate_reviews_path(@candidate)) ? "selected-tab" : "unselected-tab" %>">Reviews</a>
         </li>
-        <li class="block lg:inline">
+        <li class="block border-b border-gray-200 dark:border-gray-700 lg:inline lg:border-b-0">
           <a href="<%= candidate_campaigns_path(@candidate) %>" class="<%= current_page?(candidate_campaigns_path(@candidate)) ? "selected-tab" : "unselected-tab" %>">Sprints</a>
+        </li>
+        <li class="block lg:inline">
+          <a href="<%= candidate_analysis_path(@candidate) %>" class="<%= current_page?(candidate_analysis_path(@candidate)) ? "selected-tab" : "unselected-tab" %>">AI analysis</a>
         </li>
       </ul>
     </div>

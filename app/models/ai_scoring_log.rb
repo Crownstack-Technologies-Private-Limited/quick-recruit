@@ -2,7 +2,7 @@ class AiScoringLog < ApplicationRecord
   belongs_to :opening
   belongs_to :requested_by, class_name: 'User'
 
-  STATUSES = %w[pending processing completed failed].freeze
+  STATUSES = %w[pending processing completed failed paused cancelled].freeze
 
   validates :batch_id, presence: true, uniqueness: true
   validates :status, inclusion: { in: STATUSES }

@@ -1,3 +1,7 @@
-web: bin/rails server
+# Puma starts with the SolidQueue plugin disabled (DISABLE_SOLID_QUEUE_IN_PUMA) so the
+# queue runs as the separate `queue:` process below. The embedded supervisor orphans its
+# workers after the laptop sleeps; a standalone process is restartable and visible in dev.
+# Production keeps the embedded plugin (config/puma.rb) — exactly one supervisor either way.
+web: DISABLE_SOLID_QUEUE_IN_PUMA=true bin/rails server
 css: bin/rails tailwindcss:watch
 queue: bin/rails solid_queue:start

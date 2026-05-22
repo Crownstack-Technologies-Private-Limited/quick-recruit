@@ -16,7 +16,10 @@ class JdExtractionService
     return if @opening.jd_requirements_hash == current_hash
 
     prompt = PromptBuilder.build_extraction_prompt(@opening)
-    result = @provider.extract_requirements(prompt: prompt)
+    result = @provider.extract_requirements(
+      prompt:   prompt,
+      metadata: { opening_id: @opening.id }
+    )
 
     @opening.update!(
       must_have:            result[:must_have],

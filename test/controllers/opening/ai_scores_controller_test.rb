@@ -66,21 +66,6 @@ class Opening::AiScoresControllerTest < ActionDispatch::IntegrationTest
     assert scores[0].score >= scores[1].score
   end
 
-  test "show returns the requested score" do
-    login_user(@user)
-    get opening_ai_score_path(@opening, @ai_score)
-    assert_response :success
-  end
-
-  test "show returns 404 for a score belonging to a different opening" do
-    login_user(@user)
-    other_opening = openings(:mobile_opening)
-
-    # Try to access web_opening's score via mobile_opening
-    get opening_ai_score_path(other_opening, @ai_score)
-    assert_response :not_found
-  end
-
   test "create enqueues AiScoringJob" do
     login_user(@admin)
 
@@ -198,5 +183,170 @@ class Opening::AiScoresControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     # Verify the controller fetches latest log
+  end
+
+  test "index filters by a single location via locations array" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { locations: ["San Francisco"] }
+    assert_response :success
+    assigns(:ai_scores).each do |score|
+      assert_match /san francisco/i, score.candidate.location.to_s
+    end
+  end
+
+  test "index filters by multiple locations" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { locations: ["San Francisco", "New York"] }
+    assert_response :success
+    assert_equal 2, assigns(:ai_scores).length
+    assigns(:ai_scores).each do |score|
+      assert_match /san francisco|new york/i, score.candidate.location.to_s
+    end
+  end
+
+  test "index returns empty results when no candidates match location filter" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { locations: ["Austin"] }
+    assert_response :success
+    assert_equal [], assigns(:ai_scores)
+  end
+
+  test "index returns all results when locations array is empty" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { locations: [] }
+    assert_response :success
+  end
+
+  test "index filters out results with date_from in the future" do
+    login_user(@user)
+    future_date = 1.day.from_now.strftime("%Y-%m-%d")
+    get opening_ai_scores_path(@opening), params: { date_from: future_date }
+    assert_response :success
+    assert_equal [], assigns(:ai_scores)
+  end
+
+  test "index filters out results with date_to in the past" do
+    login_user(@user)
+    past_date = 1.year.ago.strftime("%Y-%m-%d")
+    get opening_ai_scores_path(@opening), params: { date_to: past_date }
+    assert_response :success
+    assert_equal [], assigns(:ai_scores)
+  end
+
+  test "index returns results for a date range spanning now" do
+    login_user(@user)
+    from = 1.year.ago.strftime("%Y-%m-%d")
+    to   = 1.year.from_now.strftime("%Y-%m-%d")
+    get opening_ai_scores_path(@opening), params: { date_from: from, date_to: to }
+    assert_response :success
+    assert assigns(:ai_scores).length > 0
+  end
+
+  test "index ignores malformed date params gracefully" do
+    login_user(@user)
+    get opening_ai_scores_path(@opening), params: { date_from: "not-a-date", date_to: "also-bad" }
+    assert_response :success
+  end
+
+  # --- pause action ---
+
+  test "pause sets in-flight log to paused and redirects with notice" do
+    login_user(@admin)
+
+    log = @opening.ai_scoring_logs.create!(
+      batch_id:        SecureRandom.uuid,
+      requested_by_id: @admin.id,
+      status:          'processing',
+      provider:        'chatgpt',
+      model:           'gpt-4o-mini'
+    )
+
+    patch pause_opening_ai_scores_path(@opening)
+
+    assert_redirected_to opening_ai_scores_path(@opening)
+    assert_match /paused/i, flash[:notice]
+    assert_equal 'paused', log.reload.status
+  end
+
+  test "pause redirects with alert when no in-flight log exists" do
+    login_user(@admin)
+
+    # Ensure no pending/processing logs exist for this opening
+    @opening.ai_scoring_logs.where(status: %w[pending processing]).delete_all
+
+    patch pause_opening_ai_scores_path(@opening)
+
+    assert_redirected_to opening_ai_scores_path(@opening)
+    assert_match /No scoring run/i, flash[:alert]
+  end
+
+  test "pause is forbidden for non-admin users" do
+    login_user(@user)
+
+    @opening.ai_scoring_logs.create!(
+      batch_id:        SecureRandom.uuid,
+      requested_by_id: @admin.id,
+      status:          'processing',
+      provider:        'chatgpt',
+      model:           'gpt-4o-mini'
+    )
+
+    patch pause_opening_ai_scores_path(@opening)
+
+    assert_redirected_to root_path
+  end
+
+  # --- destroy action ---
+
+  test "destroy deletes all ai scores and logs for the opening and resets extraction fields" do
+    login_user(@admin)
+
+    # Confirm there are scores and logs before clearing
+    assert @opening.ai_scores.any?, "Fixture must have scores for web_opening"
+    assert @opening.ai_scoring_logs.any?, "Fixture must have logs for web_opening"
+
+    # Give the opening some extraction data to verify it gets cleared
+    @opening.update!(must_have: [{ "skill" => "Ruby" }], good_to_have: [{ "skill" => "Rails" }], jd_requirements_hash: "abc123")
+
+    delete opening_ai_scores_path(@opening)
+
+    assert_redirected_to opening_ai_scores_path(@opening)
+    assert_match /cleared/i, flash[:notice]
+    assert_equal 0, AiScore.where(opening_id: @opening.id).count
+    assert_equal 0, AiScoringLog.where(opening_id: @opening.id).count
+    @opening.reload
+    assert_equal [], @opening.must_have
+    assert_equal [], @opening.good_to_have
+    assert_nil @opening.jd_requirements_hash
+  end
+
+  test "destroy cancels in-flight log before wiping all logs" do
+    login_user(@admin)
+
+    in_flight = @opening.ai_scoring_logs.create!(
+      batch_id:        SecureRandom.uuid,
+      requested_by_id: @admin.id,
+      status:          'processing',
+      provider:        'chatgpt',
+      model:           'gpt-4o-mini'
+    )
+
+    delete opening_ai_scores_path(@opening)
+
+    assert_redirected_to opening_ai_scores_path(@opening)
+    # All logs including the in-flight one are gone after clear
+    assert_nil AiScoringLog.find_by(id: in_flight.id), "In-flight log must be deleted after clear"
+    assert_equal 0, AiScoringLog.where(opening_id: @opening.id).count
+  end
+
+  test "destroy is forbidden for non-admin users" do
+    login_user(@user)
+
+    score_count_before = AiScore.where(opening_id: @opening.id).count
+
+    delete opening_ai_scores_path(@opening)
+
+    assert_redirected_to root_path
+    assert_equal score_count_before, AiScore.where(opening_id: @opening.id).count, "Scores must not be deleted for non-admin"
   end
 end

@@ -29,7 +29,7 @@ class AiScoringJob < ApplicationJob
       quoted_key = AiScoringLog.connection.quote("ai_scoring:opening:#{opening_id.to_i}")
       AiScoringLog.connection.execute("SELECT pg_advisory_xact_lock(hashtext(#{quoted_key}))")
       log.reload
-      next if %w[processing completed failed].include?(log.status)
+      next if %w[processing completed failed paused cancelled].include?(log.status)
       log.update!(status: 'processing', started_at: Time.current)
       should_process = true
     end
@@ -45,32 +45,44 @@ class AiScoringJob < ApplicationJob
   private
 
   def process_batch(log, provider_instance = nil)
-    opening   = Opening.find(log.opening_id)
-    provider  = provider_instance || provider_for(log.provider)
+    opening  = Opening.find(log.opening_id)
+    provider = provider_instance || provider_for(log.provider)
 
     JdExtractionService.ensure_extracted(opening: opening, provider: provider)
 
-    service    = AiScoringService.new(provider: provider, log: log)
-    candidates = candidates_for(opening)
-    log.update!(total_candidates: candidates.size)
+    service = AiScoringService.new(provider: provider, log: log)
+    scope   = candidates_scope(opening)
+    log.update!(total_candidates: scope.count)
 
-    candidates.each_slice(CHUNK_SIZE) do |chunk|
-      chunk.each do |c|
-        service.score(candidate: c, opening: opening)
+    # Poll DB at each batch boundary; responds to pause/cancel within CHUNK_SIZE candidates.
+    interrupted = false
+
+    scope.find_in_batches(batch_size: CHUNK_SIZE) do |batch|
+      if log.reload.status.in?(%w[paused cancelled])
+        interrupted = true
+        break
       end
+      batch.each { |c| service.score(candidate: c, opening: opening) }
+      ActiveRecord::Base.connection.clear_query_cache
+      GC.compact
     end
 
-    log.update!(status: 'completed', completed_at: Time.current)
+    # Do a final DB check before marking completed — handles the case where pause/cancel
+    # was set *during* the last batch (after the boundary check passed, interrupted stays false).
+    log.update!(status: 'completed', completed_at: Time.current) \
+      unless interrupted || log.reload.status.in?(%w[paused cancelled])
+  ensure
+    ActiveRecord::Base.connection.clear_query_cache
+    GC.compact
   end
 
-  def candidates_for(opening)
+  def candidates_scope(opening)
     Candidate
       .where(opening_id: opening.id)
       .where(bucket: SCOREABLE_BUCKETS)
       .joins(:resume_attachment)
       .includes(resume_attachment: :blob)
       .order(:id)
-      .to_a
   end
 
   def provider_for(key)

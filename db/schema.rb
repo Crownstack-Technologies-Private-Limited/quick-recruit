@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_16_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_21_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -79,7 +79,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_110000) do
     t.index ["candidate_id", "is_valid"], name: "index_ai_scores_on_candidate_id_and_is_valid"
     t.index ["candidate_id", "opening_id", "is_valid"], name: "index_ai_scores_one_valid_per_pair", unique: true, where: "(is_valid = true)"
     t.index ["candidate_id"], name: "index_ai_scores_on_candidate_id"
-    t.index ["opening_id", "score"], name: "index_ai_scores_on_opening_and_score"
+    t.index ["opening_id", "score"], name: "index_ai_scores_on_opening_score_valid", order: { score: :desc }, where: "(is_valid = true)"
     t.index ["opening_id"], name: "index_ai_scores_on_opening_id"
     t.index ["processed_at"], name: "index_ai_scores_on_processed_at"
     t.index ["provider"], name: "index_ai_scores_on_provider"
@@ -91,10 +91,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_110000) do
     t.datetime "completed_at"
     t.datetime "created_at", null: false
     t.text "error_details"
+    t.integer "extraction_failed_count", default: 0, null: false
     t.integer "failed_count", default: 0, null: false
     t.string "model", null: false
     t.bigint "opening_id", null: false
     t.string "provider", null: false
+    t.integer "provider_failed_count", default: 0, null: false
     t.bigint "requested_by_id", null: false
     t.datetime "started_at"
     t.string "status", default: "pending", null: false
@@ -163,6 +165,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_110000) do
     t.string "website"
     t.string "zoho_id"
     t.string "zoho_job_id"
+    t.index ["bucket"], name: "index_candidates_on_bucket"
     t.index ["email"], name: "unique_emails", unique: true
     t.index ["opening_id"], name: "index_candidates_on_opening_id"
     t.index ["owner_id"], name: "index_candidates_on_owner_id"

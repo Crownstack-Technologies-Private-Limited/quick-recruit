@@ -20,7 +20,7 @@ class AiScoringService
   def score(candidate:, opening:)
     extraction = ResumeExtractor.extract(candidate)
     unless extraction.usable?
-      record_log_failure
+      record_log_failure(:extraction)
       return failed_result('resume_unusable', extraction.reason)
     end
 
@@ -39,7 +39,10 @@ class AiScoringService
       resume_text: extraction.text
     )
 
-    response = @provider.score(prompt: prompt)
+    response = @provider.score(
+      prompt:   prompt,
+      metadata: { opening_id: opening.id, candidate_id: candidate.id, log_id: @log&.id }
+    )
 
     ai_score = persist_score(
       candidate:   candidate,
@@ -52,7 +55,7 @@ class AiScoringService
     record_log_success(response)
     scored_result(ai_score, response)
   rescue BaseAiProvider::ScoringError => e
-    record_log_failure
+    record_log_failure(:provider)
     failed_result('provider_error', e.message)
   end
 
@@ -125,9 +128,14 @@ class AiScoringService
     @log.increment!(:successfully_scored)
   end
 
-  def record_log_failure
+  # category: :extraction (unreadable resume) or :provider (AI provider error).
+  # Bumps the grand total plus the matching cause-specific counter atomically.
+  def record_log_failure(category)
     return unless @log
-    @log.increment!(:failed_count)
+    sub_column = category == :provider ? 'provider_failed_count' : 'extraction_failed_count'
+    AiScoringLog.where(id: @log.id).update_all(
+      "failed_count = failed_count + 1, #{sub_column} = #{sub_column} + 1"
+    )
   end
 
   def scored_result(ai_score, response)
