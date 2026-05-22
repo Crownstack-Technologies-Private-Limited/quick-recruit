@@ -309,6 +309,30 @@ class AiScoringJobTest < ActiveJob::TestCase
     assert_equal 'paused', AiScoringLog.find_by(batch_id: @batch_id).status, "Log status must remain paused"
   end
 
+  # Test: job skips entirely when the log for this batch_id is already 'cancelled'
+  def test_job_skips_when_log_already_cancelled
+    create_candidates_with_resumes(2)
+
+    AiScoringLog.create!(
+      batch_id:        @batch_id,
+      opening_id:      @opening.id,
+      requested_by_id: @user.id,
+      status:          'cancelled',
+      provider:        'chatgpt',
+      model:           'fake-1'
+    )
+
+    AiScoringJob.perform_now(
+      opening_id:      @opening.id,
+      batch_id:        @batch_id,
+      requested_by_id: @user.id,
+      provider:        @fake_provider
+    )
+
+    assert_equal 0, @fake_provider.calls, "Provider should not be called when log is already cancelled"
+    assert_equal 'cancelled', AiScoringLog.find_by(batch_id: @batch_id).status, "Log status must remain cancelled"
+end
+
   # Test: job stops at next batch boundary when log is set to 'paused' during processing
   def test_job_stops_at_next_batch_boundary_when_paused_mid_run
     # Temporarily reduce CHUNK_SIZE to 1 so each candidate gets its own batch
@@ -339,6 +363,8 @@ class AiScoringJobTest < ActiveJob::TestCase
     assert_equal 1, @fake_provider.calls, "Only the first batch (1 candidate) should be scored"
     assert_equal 'paused', AiScoringLog.find_by(batch_id: @batch_id).status, "Log should remain paused"
     assert_equal 1, AiScore.where(opening_id: @opening.id).count, "Only 1 score should have been created"
+    assert_nil AiScoringLog.find_by(batch_id: @batch_id).completed_at,
+      "completed_at must not be set when job pauses mid-run"
   ensure
     AiScoringJob.send(:remove_const, :CHUNK_SIZE)
     AiScoringJob.const_set(:CHUNK_SIZE, original_chunk)

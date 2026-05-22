@@ -54,14 +54,20 @@ class AiScoringJob < ApplicationJob
     scope   = candidates_scope(opening)
     log.update!(total_candidates: scope.count)
 
+    # Poll DB at each batch boundary; responds to pause/cancel within CHUNK_SIZE candidates.
+    interrupted = false
+
     scope.find_in_batches(batch_size: CHUNK_SIZE) do |batch|
-      break if log.reload.status.in?(%w[paused cancelled])
+      if log.reload.status.in?(%w[paused cancelled])
+        interrupted = true
+        break
+      end
       batch.each { |c| service.score(candidate: c, opening: opening) }
       ActiveRecord::Base.connection.clear_query_cache
       GC.compact
     end
 
-    log.update!(status: 'completed', completed_at: Time.current) unless log.reload.status.in?(%w[paused cancelled])
+    log.update!(status: 'completed', completed_at: Time.current) unless interrupted
   ensure
     ActiveRecord::Base.connection.clear_query_cache
     GC.compact
