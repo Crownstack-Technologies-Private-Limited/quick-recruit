@@ -125,10 +125,11 @@ Helper (private method in controller or extracted to a service):
 
 ```ruby
 def discard_queued_ai_scoring_jobs(opening_id)
+  # arguments is a text column — cast to jsonb for JSON path querying
   SolidQueue::Job
     .where(class_name: 'AiScoringJob', finished_at: nil)
-    .where("arguments -> 'arguments' -> 0 ->> 'opening_id' = ?", opening_id.to_s)
-    .joins(:ready_execution)   # only queued, not claimed (running)
+    .where("(arguments::jsonb) -> 'arguments' -> 0 ->> 'opening_id' = ?", opening_id.to_s)
+    .joins(:ready_execution)   # only queued-but-not-claimed (running jobs exit via DB flag)
     .destroy_all
 end
 ```
