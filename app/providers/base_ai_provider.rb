@@ -20,13 +20,15 @@ class BaseAiProvider
   # Returns: { score: Integer, reasoning: String, matched_skills: Hash,
   #            gaps: Hash, strengths: Array, concerns: Array,
   #            tokens: { input: Integer, output: Integer } }
-  def score(prompt:)
+  # metadata: optional hash passed through to LangSmith traces (e.g. opening_id, candidate_id)
+  def score(prompt:, metadata: {})
     raise NotImplementedError
   end
 
   # Returns: { must_have: Array<String>, good_to_have: Array<String>,
   #            tokens: { input: Integer, output: Integer } }
-  def extract_requirements(prompt:)
+  # metadata: optional hash passed through to LangSmith traces (e.g. opening_id)
+  def extract_requirements(prompt:, metadata: {})
     raise NotImplementedError
   end
 

@@ -13,7 +13,7 @@ class AiScoringServiceTest < ActiveSupport::TestCase
       @call_count = 0
     end
 
-    def score(prompt:)
+    def score(prompt:, metadata: {})
       @call_count += 1
       raise next_error if next_error
       next_response

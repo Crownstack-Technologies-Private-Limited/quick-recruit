@@ -39,7 +39,10 @@ class AiScoringService
       resume_text: extraction.text
     )
 
-    response = @provider.score(prompt: prompt)
+    response = @provider.score(
+      prompt:   prompt,
+      metadata: { opening_id: opening.id, candidate_id: candidate.id, log_id: @log&.id }
+    )
 
     ai_score = persist_score(
       candidate:   candidate,

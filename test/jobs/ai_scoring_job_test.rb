@@ -14,7 +14,7 @@ class AiScoringJobTest < ActiveJob::TestCase
       @should_raise_on_call = nil
     end
 
-    def score(prompt:)
+    def score(prompt:, metadata: {})
       @calls += 1
       if @should_raise_on_call && @calls == @should_raise_on_call
         raise BaseAiProvider::ScoringError.new('Mock API error')
@@ -22,7 +22,7 @@ class AiScoringJobTest < ActiveJob::TestCase
       @next_response
     end
 
-    def extract_requirements(prompt:)
+    def extract_requirements(prompt:, metadata: {})
       { must_have: [], good_to_have: [], tokens: { input: 0, output: 0 } }
     end
 
@@ -264,7 +264,7 @@ class AiScoringJobTest < ActiveJob::TestCase
     candidates = create_candidates_with_resumes(1)
 
     # Override provider to raise a non-ScoringError
-    @fake_provider.define_singleton_method(:score) do |prompt:|
+    @fake_provider.define_singleton_method(:score) do |prompt:, metadata: {}|
       raise StandardError.new('Database connection lost')
     end
 
