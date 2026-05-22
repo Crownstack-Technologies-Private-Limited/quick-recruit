@@ -142,7 +142,7 @@ class PromptBuilderTest < ActiveSupport::TestCase
     )
     assert_includes prompt, 'Experience fit rule'
     assert_includes prompt, '3–5 years'
-    assert_includes prompt, 'deduct 30–40 points'
+    assert_includes prompt, 'deduct 25–30 points'
   end
 
   test 'build includes correct tolerance bounds for experience range' do
@@ -153,8 +153,8 @@ class PromptBuilderTest < ActiveSupport::TestCase
       opening: @opening,
       resume_text: "Resume content"
     )
-    # lower = 3 * 0.65 = 1.9, upper = 5 * 1.35 = 6.8
-    assert_includes prompt, '1.9–6.8 years'
+    # lower = 3 * 0.65 = 1.95 → rounds to 2.0, upper = 5 * 1.35 = 6.75 → rounds to 6.8
+    assert_includes prompt, '2.0–6.8 years'
   end
 
   test 'build omits experience fit rule when opening has no experience range' do

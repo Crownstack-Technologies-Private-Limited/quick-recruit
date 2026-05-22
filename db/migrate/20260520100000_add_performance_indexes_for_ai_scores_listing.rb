@@ -1,4 +1,4 @@
-class AddPerformanceIndexesForAiScoresListing < ActiveRecord::Migration[7.2]
+class AddPerformanceIndexesForAiScoresListing < ActiveRecord::Migration[8.1]
   def change
     # Used in JOIN filter: WHERE candidates.bucket IN (...) on every listing load
     add_index :candidates, :bucket, name: "index_candidates_on_bucket"

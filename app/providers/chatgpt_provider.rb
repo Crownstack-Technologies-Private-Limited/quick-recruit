@@ -41,7 +41,7 @@ class ChatgptProvider < BaseAiProvider
     })
 
     result = parse_response(response)
-    result
+    result # explicit return so `result` is in scope for the ensure block below
   rescue Faraday::Error, Net::ReadTimeout => e
     api_error = e
     raise ScoringError, "ChatGPT API error: #{e.message}"
@@ -74,7 +74,7 @@ class ChatgptProvider < BaseAiProvider
     })
 
     result = parse_extraction_response(response)
-    result
+    result # explicit return so `result` is in scope for the ensure block below
   rescue Faraday::Error, Net::ReadTimeout => e
     api_error = e
     raise ScoringError, "ChatGPT API error: #{e.message}"
