@@ -67,7 +67,10 @@ class AiScoringJob < ApplicationJob
       GC.compact
     end
 
-    log.update!(status: 'completed', completed_at: Time.current) unless interrupted
+    # Do a final DB check before marking completed — handles the case where pause/cancel
+    # was set *during* the last batch (after the boundary check passed, interrupted stays false).
+    log.update!(status: 'completed', completed_at: Time.current) \
+      unless interrupted || log.reload.status.in?(%w[paused cancelled])
   ensure
     ActiveRecord::Base.connection.clear_query_cache
     GC.compact

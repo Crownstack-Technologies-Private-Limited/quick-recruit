@@ -371,6 +371,46 @@ end
     AiScoringService.define_method(:score, orig_score) if orig_score
   end
 
+  # Test: pause set DURING the last batch (no second batch to trip the boundary check)
+  # This is the exact bug scenario: interrupted=false because the boundary check never fires again,
+  # so the old `unless interrupted` guard let `log.update!(status: 'completed')` overwrite 'paused'.
+  def test_job_does_not_overwrite_paused_when_pause_set_during_last_batch
+    # Use CHUNK_SIZE=1 and exactly 1 candidate so there's only one batch.
+    # Pause is set INSIDE that batch (after scoring), so the boundary check at the top of the
+    # loop never sees 'paused' — interrupted stays false. The final reload guard must catch it.
+    original_chunk = AiScoringJob::CHUNK_SIZE
+    AiScoringJob.send(:remove_const, :CHUNK_SIZE)
+    AiScoringJob.const_set(:CHUNK_SIZE, 1)
+
+    create_candidates_with_resumes(1)
+    target_batch_id = @batch_id
+
+    orig_score = AiScoringService.instance_method(:score)
+    AiScoringService.define_method(:score) do |candidate:, opening:|
+      result = orig_score.bind(self).call(candidate: candidate, opening: opening)
+      # Simulate user clicking Pause right as the last (and only) batch finishes scoring.
+      AiScoringLog.where(batch_id: target_batch_id).update_all(status: 'paused')
+      result
+    end
+
+    AiScoringJob.perform_now(
+      opening_id:      @opening.id,
+      batch_id:        @batch_id,
+      requested_by_id: @user.id,
+      provider:        @fake_provider
+    )
+
+    log = AiScoringLog.find_by(batch_id: @batch_id)
+    assert_equal 'paused', log.status,
+      "Log must stay 'paused' — job must not overwrite with 'completed' when pause is set mid-batch"
+    assert_nil log.completed_at,
+      "completed_at must not be set when the job respects a mid-batch pause"
+  ensure
+    AiScoringJob.send(:remove_const, :CHUNK_SIZE)
+    AiScoringJob.const_set(:CHUNK_SIZE, original_chunk)
+    AiScoringService.define_method(:score, orig_score) if orig_score
+  end
+
   # Helper methods
   private
 
