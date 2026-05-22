@@ -120,6 +120,26 @@ class Opening::AiScoresController < Opening::BaseController
     redirect_to opening_ai_scores_path(@opening), notice: 'Scoring paused. Resume when ready.'
   end
 
+  # DELETE /openings/:opening_id/ai_scores
+  def destroy
+    authorize @opening, :create?
+
+    # Signal any running job to stop at its next batch boundary before we delete
+    @opening.ai_scoring_logs.where(status: %w[pending processing]).update_all(status: 'cancelled')
+
+    # Remove queued-but-not-yet-running SolidQueue jobs for this opening
+    discard_queued_ai_scoring_jobs(@opening.id)
+
+    # Wipe all scores and all run history for this opening
+    AiScore.where(opening_id: @opening.id).delete_all
+    AiScoringLog.where(opening_id: @opening.id).delete_all
+
+    # Reset JD extraction so the next run re-extracts requirements from scratch
+    @opening.update!(must_have: [], good_to_have: [], jd_requirements_hash: nil)
+
+    redirect_to opening_ai_scores_path(@opening), notice: 'All AI scores cleared successfully.'
+  end
+
   private
 
   # Defensive: only accept well-formed UUIDs to avoid weird DB content.

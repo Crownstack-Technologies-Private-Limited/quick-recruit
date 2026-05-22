@@ -295,4 +295,58 @@ class Opening::AiScoresControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to root_path
   end
+
+  # --- destroy action ---
+
+  test "destroy deletes all ai scores and logs for the opening and resets extraction fields" do
+    login_user(@admin)
+
+    # Confirm there are scores and logs before clearing
+    assert @opening.ai_scores.any?, "Fixture must have scores for web_opening"
+    assert @opening.ai_scoring_logs.any?, "Fixture must have logs for web_opening"
+
+    # Give the opening some extraction data to verify it gets cleared
+    @opening.update!(must_have: [{ "skill" => "Ruby" }], good_to_have: [{ "skill" => "Rails" }], jd_requirements_hash: "abc123")
+
+    delete opening_ai_scores_path(@opening)
+
+    assert_redirected_to opening_ai_scores_path(@opening)
+    assert_match /cleared/i, flash[:notice]
+    assert_equal 0, AiScore.where(opening_id: @opening.id).count
+    assert_equal 0, AiScoringLog.where(opening_id: @opening.id).count
+    @opening.reload
+    assert_equal [], @opening.must_have
+    assert_equal [], @opening.good_to_have
+    assert_nil @opening.jd_requirements_hash
+  end
+
+  test "destroy cancels in-flight log before wiping all logs" do
+    login_user(@admin)
+
+    in_flight = @opening.ai_scoring_logs.create!(
+      batch_id:        SecureRandom.uuid,
+      requested_by_id: @admin.id,
+      status:          'processing',
+      provider:        'chatgpt',
+      model:           'gpt-4o-mini'
+    )
+
+    delete opening_ai_scores_path(@opening)
+
+    assert_redirected_to opening_ai_scores_path(@opening)
+    # All logs including the in-flight one are gone after clear
+    assert_nil AiScoringLog.find_by(id: in_flight.id), "In-flight log must be deleted after clear"
+    assert_equal 0, AiScoringLog.where(opening_id: @opening.id).count
+  end
+
+  test "destroy is forbidden for non-admin users" do
+    login_user(@user)
+
+    score_count_before = AiScore.where(opening_id: @opening.id).count
+
+    delete opening_ai_scores_path(@opening)
+
+    assert_redirected_to root_path
+    assert_equal score_count_before, AiScore.where(opening_id: @opening.id).count, "Scores must not be deleted for non-admin"
+  end
 end
