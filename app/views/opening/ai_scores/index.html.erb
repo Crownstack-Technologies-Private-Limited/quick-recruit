@@ -107,7 +107,7 @@
                     class: "btn-primary text-xs" %>
               <%= button_to "Clear All Scores", opening_ai_scores_path(@opening), method: :delete,
                     data: { turbo_confirm: "This will delete all scores, run history, and reset JD requirements for this opening. Continue?" },
-                    class: "text-xs px-3 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 bg-white dark:bg-gray-900 hover:bg-red-50 dark:hover:bg-red-950 transition-colors font-medium" %>
+                    class: "cursor-pointer inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-primary-700 dark:text-primary-400 rounded-xs border border-primary-700 dark:border-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-950 focus:ring-2 focus:ring-primary-300 focus:outline-hidden" %>
             </div>
           </div>
 
@@ -156,7 +156,7 @@
                 <% if @latest_log.present? %>
                   <%= button_to "Clear All Scores", opening_ai_scores_path(@opening), method: :delete,
                         data: { turbo_confirm: "This will delete all scores, run history, and reset JD requirements for this opening. Continue?" },
-                        class: "text-xs px-3 py-1.5 rounded-lg border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 bg-white dark:bg-gray-900 hover:bg-red-50 dark:hover:bg-red-950 transition-colors font-medium self-start" %>
+                        class: "cursor-pointer inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-primary-700 dark:text-primary-400 rounded-xs border border-primary-700 dark:border-primary-400 bg-transparent hover:bg-primary-50 dark:hover:bg-primary-950 focus:ring-2 focus:ring-primary-300 focus:outline-hidden" %>
                 <% end %>
               </div>
               <p class="text-xs text-gray-400 dark:text-gray-500">AI scores assist screening only — every decision still requires human review.</p>
